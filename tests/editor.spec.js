@@ -1,3 +1,4 @@
+import { articleThemes, accentPresets, codeThemes, validateLayout } from '../layout.js';
 import { test, expect } from '@playwright/test';
 import { readFile, writeFile, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -35,7 +36,7 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  rel=E.fromstring(z.read('word/_rels/document.xml.rels'))
  val='{'+ns['w']+'}val'
  media=[n for n in z.namelist() if n.startswith('word/media/') and not n.endswith('/')]
- print(json.dumps({'text':''.join(t.text or '' for t in root.findall('.//w:t',ns)), 'colors':[n.get(val) for n in root.findall('.//w:color',ns)], 'sizes':[n.get(val) for n in root.findall('.//w:sz',ns)], 'headings':[n.get(val) for n in root.findall('.//w:pStyle',ns)], 'tables':len(root.findall('.//w:tbl',ns)), 'rows':len(root.findall('.//w:tr',ns)), 'images':len(root.findall('.//a:blip',ns)), 'media':media, 'mediaDimensions':[list(struct.unpack('>II',z.read(n)[16:24])) for n in media if n.endswith('.png')], 'externalImages':[n.get('Target') for n in rel if n.get('Type','').endswith('/image') and n.get('TargetMode')=='External'], 'fonts':[n.attrib for n in root.findall('.//w:rFonts',ns)], 'fills':[n.get('{'+ns['w']+'}fill') for n in root.findall('.//w:shd',ns)], 'altChunk':len(root.findall('.//w:altChunk',ns))},ensure_ascii=False))
+ print(json.dumps({'text':''.join(t.text or '' for t in root.findall('.//w:t',ns)), 'colors':[n.get(val) for n in root.findall('.//w:color',ns)], 'sizes':[n.get(val) for n in root.findall('.//w:sz',ns)], 'headings':[n.get(val) for n in root.findall('.//w:pStyle',ns)], 'tables':len(root.findall('.//w:tbl',ns)), 'rows':len(root.findall('.//w:tr',ns)), 'images':len(root.findall('.//a:blip',ns)), 'media':media, 'mediaDimensions':[list(struct.unpack('>II',z.read(n)[16:24])) for n in media if n.endswith('.png')], 'externalImages':[n.get('Target') for n in rel if n.get('Type','').endswith('/image') and n.get('TargetMode')=='External'], 'indents':[n.attrib for n in root.findall('.//w:ind',ns)], 'fonts':[n.attrib for n in root.findall('.//w:rFonts',ns)], 'fills':[n.get('{'+ns['w']+'}fill') for n in root.findall('.//w:shd',ns)], 'altChunk':len(root.findall('.//w:altChunk',ns))},ensure_ascii=False))
 `, path], { encoding: 'utf8' }));
 }
 
@@ -98,6 +99,7 @@ test('Markdown 导入导出正文往返一致，恢复示例先确认', async ({
 test('HTML 带内联样式，离开编辑器后颜色、表格和全文仍可阅读', async ({ page, context }) => {
   await loaded(page);
   await page.locator('[data-theme="technical"].theme-card').click();
+  await page.locator('#accent').fill('#426da8');
   const waiting = page.waitForEvent('download');
   await page.locator('#download-html').click();
   const download = await waiting;
@@ -306,13 +308,13 @@ test('AI 命令使用同一配置导出字体、代码配色、图注与本地�
     const image = await imageFile(page);
     await writeFile(path.join(directory, '配图.png'), image.buffer);
     await writeFile(path.join(directory, 'article.md'), '## 自动排版\n\n![图片说明](配图.png "图片标题")\n\n```js\nconst answer = 42;\n```');
-    await writeFile(path.join(directory, 'layout.json'), JSON.stringify({ font: 'kai', codeTheme: 'warm', caption: 'title', width: '480' }));
+    await writeFile(path.join(directory, 'layout.json'), JSON.stringify({ theme: 'bold', accent: 'violet', font: 'kai', codeTheme: 'warm', caption: 'title', captionFormat: 'numbered', paragraphStyle: 'indent', width: '480' }));
     const output = path.join(directory, 'result.docx');
     const { stdout } = await promisify(execFile)(process.execPath, ['scripts/export.mjs', '--input', path.join(directory, 'article.md'), '--config', path.join(directory, 'layout.json'), '--output', output, '--title', 'AI 样稿']);
-    expect(JSON.parse(stdout)).toMatchObject({ ok: true, output, config: { font: 'kai' } });
+    expect(JSON.parse(stdout)).toMatchObject({ ok: true, output, config: { font: 'kai', accent: '#7952b3', theme: 'bold' } });
     const doc = inspectDocx(output);
     expect(doc.text).toContain('AI 样稿');
-    expect(doc.text).toContain('图片标题');
+    expect(doc.text).toContain('图 1：图片标题');
     expect(doc.text).toContain('const answer = 42;');
     expect(doc.images).toBe(1);
     expect(doc.mediaDimensions).toEqual([[600, 240]]);
@@ -346,4 +348,67 @@ test('AI 拒绝无效配置、越界图片、软链接和坏图，失败保留�
       await expect(promisify(execFile)(process.execPath, ['scripts/export.mjs', '--input', input, '--config', configFile, '--output', output])).rejects.toMatchObject({ code: 1, stderr: expect.stringContaining('排版参数') });
     }
   } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+
+test('18 款主题色可点选，自定义、主题切换与刷新不丢失选择', async ({ page }) => {
+  await loaded(page);
+  await expect(page.locator('.theme-card')).toHaveCount(9);
+  await expect(page.locator('.theme-options')).toHaveCSS('height', '310px');
+  await expect(page.locator('.accent-chip')).toHaveCount(18);
+  await expect(page.locator('#codeTheme option')).toHaveCount(8);
+  for (const [id, [name, color]] of Object.entries(accentPresets)) {
+    await page.locator(`[data-accent="${id}"]`).click();
+    await expect(page.locator('#accent-name')).toHaveText(name);
+    await expect(page.locator('#accent')).toHaveValue(color);
+    await expect(page.locator(`[data-accent="${id}"]`)).toHaveAttribute('aria-pressed', 'true');
+    expect(await page.evaluate(() => window.paperLab.getConfig().accent)).toBe(color);
+  }
+  await page.locator('[data-theme="bold"].theme-card').click();
+  await expect(page.locator('#accent-name')).toHaveText('橄榄绿');
+  await page.locator('#accent').fill('#123456');
+  await expect(page.locator('#accent-name')).toHaveText('自定义');
+  await expect(page.locator('.accent-chip[aria-pressed="true"]')).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('#preview')).toHaveAttribute('data-theme', 'bold');
+  await expect(page.locator('#accent')).toHaveValue('#123456');
+  await page.locator('#reset-layout').click();
+  await expect(page.locator('[data-accent="jade"]')).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('新增主题与所有预设色、代码配色实际写入 DOCX，段落缩进可导出', async ({ page }) => {
+  await loaded(page);
+  const themes = Object.keys(articleThemes);
+  const codes = Object.keys(codeThemes);
+  const colors = Object.entries(accentPresets);
+  for (let index = 0; index < colors.length; index++) {
+    const [id, [, color]] = colors[index];
+    const theme = themes[index % themes.length];
+    const codeTheme = codes[index % codes.length];
+    const config = { theme, accent: id, codeTheme, font: index % 2 ? 'heiti' : 'deng', fontSize: index % 2 ? '12' : '24', paragraphStyle: 'indent' };
+    await page.evaluate((config) => window.paperLab.load({ markdown: '## 排版标题\n\n正文与**强调**。\n\n> 引用内容\n\n```js\nconst n = 1;\n```\n\n| 名称 | 内容 |\n| --- | --- |\n| 样式 | 导出 |', title: '主题验证', config }), config);
+    await expect(page.locator('#preview > p').first()).toHaveCSS('text-indent', index % 2 ? '24px' : '48px');
+    const waiting = page.waitForEvent('download');
+    await page.locator('#download-docx').click();
+    const doc = inspectDocx(await (await waiting).path());
+    expect(doc.text).toContain('正文与强调');
+    expect(doc.colors.map((value) => value.toUpperCase())).toContain(color.slice(1).toUpperCase());
+    expect(doc.fills.map((value) => value.toUpperCase())).toContain(codeThemes[codeTheme][1].slice(1).toUpperCase());
+    expect(doc.tables).toBe(1);
+    expect(doc.sizes).toContain(index % 2 ? '18' : '36');
+    expect(JSON.stringify(doc.fonts)).toContain(index % 2 ? '黑体' : '等线');
+    expect(doc.indents.some((attributes) => Object.entries(attributes).some(([key, value]) => key.endsWith('}firstLine') && Number(value) > 0))).toBe(true);
+  }
+});
+
+test('AI 可以发现完整样式目录，预设色归一化并拒绝错误选项', async () => {
+  const { stdout } = await promisify(execFile)(process.execPath, ['scripts/export.mjs', '--list-styles']);
+  const catalog = JSON.parse(stdout);
+  expect(Object.keys(catalog.themes)).toHaveLength(9);
+  expect(Object.keys(catalog.colors)).toHaveLength(18);
+  expect(Object.keys(catalog.codeThemes)).toHaveLength(8);
+  expect(validateLayout({ accent: 'red', theme: 'classic', paragraphStyle: 'compact' }).accent).toBe('#bd3038');
+  for (const config of [{ accent: 'missing' }, { theme: 'missing' }, { fontSize: '25' }, { captionFormat: 'missing' }]) {
+    expect(() => validateLayout(config)).toThrow('无效排版参数');
+  }
 });

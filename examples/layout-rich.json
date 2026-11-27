@@ -1,0 +1,13 @@
+{
+  "theme": "bold",
+  "accent": "violet",
+  "font": "sans",
+  "fontSize": "18",
+  "lineHeight": "1.9",
+  "width": "480",
+  "codeTheme": "nord",
+  "caption": "title",
+  "captionFormat": "numbered",
+  "paragraphStyle": "indent",
+  "footnotes": true
+}

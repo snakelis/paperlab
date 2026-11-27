@@ -21,8 +21,8 @@ pnpm dev
 
 - 以用户提供的钱包文章全文为默认样稿，正文位于 `sample.md`，不改写内容。
 - 单独补充一个可编辑的演示标题；Markdown 导出不改写正文，标题使用文件名承载。
-- Markdown 实时编辑预览、三种主题、自定义颜色、字体、字号、行距和预览宽度。
-- 三款代码块配色、可选图注、排版重置（保留正文与图片）、导出 AI 配置。
+- Markdown 实时编辑预览、9 款文章主题、18 款主题色预设与自定义颜色、字体、字号、行距和预览宽度。
+- 8 款代码块配色、可选图注与自动编号、3 款段落样式、排版重置（保留正文与图片）、导出 AI 配置。
 - 标题、引用、表格、步骤、列表、强调、图片和代码等基础 Markdown。
 - 外部链接可转为文末引用，公众号文章链接保留。
 - 导入 Markdown、插入本地图片和表格；图片支持多选、粘贴和拖到正文编辑区。
@@ -95,15 +95,36 @@ HTML 写法中的本地图片路径不做文件解析，请使用标准 Markdown
 
 | 字段 | 可选值 | 默认值 |
 | --- | --- | --- |
-| `theme` | `journal` 清爽笔记、`editorial` 人文杂志、`technical` 技术专栏 | `journal` |
-| `font` | `theme` 跟随主题、`sans` 微软雅黑、`serif` 宋体、`kai` 楷体、`fang` 仿宋 | `theme` |
-| `fontSize` | `"14"` 至 `"20"`，单位 px | `"16"` |
-| `lineHeight` | `"1.7"`、`"1.9"`、`"2.1"` | `"1.9"` |
+| `theme` | `journal` 清爽笔记、`editorial` 人文杂志、`technical` 技术专栏、`minimal` 极简留白、`classic` 经典书刊、`business` 商务报告、`elegant` 雅致手札、`bold` 醒目专栏、`notebook` 阅读手记 | `journal` |
+| `font` | `theme` 跟随主题、`sans` 微软雅黑、`serif` 宋体、`kai` 楷体、`fang` 仿宋、`heiti` 黑体、`deng` 等线 | `theme` |
+| `fontSize` | `"12"` 至 `"24"`，单位 px | `"16"` |
+| `lineHeight` | `"1.5"`、`"1.7"`、`"1.9"`、`"2.1"`、`"2.3"` | `"1.9"` |
 | `width` | `"375"`、`"480"`、`"680"`，预览纸张宽度（正文扣除留白） | `"375"` |
-| `accent` | 六位十六进制颜色，如 `#087f74` | `#087f74` |
-| `codeTheme` | `dark` 深色、`light` 浅色、`warm` 暖色 | `dark` |
+| `accent` | 预设 ID（如 `red`、`violet`）或六位十六进制颜色，如 `#087f74` | `#087f74` |
+| `codeTheme` | `dark` 深色、`light` 浅色、`warm` 暖色、`github`、`monokai`、`nord`、`dracula`、`solarized` | `dark` |
 | `caption` | `none` 不显示、`alt` 图片替代文字、`title` 图片标题 | `none` |
+| `captionFormat` | `plain` 简洁说明、`numbered` 自动编号（图 1：说明） | `plain` |
+| `paragraphStyle` | `normal` 标准段落、`indent` 首行缩进两字、`compact` 紧凑段落 | `normal` |
 | `footnotes` | JSON 布尔值，是否转换外链引用 | `true` |
+
+主题色预设支持：翡翠绿 `jade`、森林绿 `forest`、薄荷绿 `mint`、经典蓝 `blue`、深海蓝 `ocean`、
+晴空蓝 `sky`、靛青 `indigo`、罗兰紫 `violet`、葡萄紫 `grape`、中国红 `red`、玫瑰红 `rose`、
+樱花粉 `pink`、暖阳橙 `orange`、琥珀金 `amber`、咖啡棕 `brown`、岩石灰 `slate`、
+石墨黑 `graphite`、橄榄绿 `olive`。自定义颜色可与任意主题组合，切换主题保留当前颜色。
+颜色同时作用于标题、强调、引用和表格的适用区域，实色标题使用白字以便阅读。
+
+AI 可读取带名称、枚举、实际色值和默认参数的完整目录，无需启动浏览器：
+
+```bash
+node scripts/export.mjs --list-styles
+node scripts/export.mjs --input sample.md --config examples/layout-rich.json --output artifacts/rich-wallet.docx
+```
+
+输入的预设色 ID 会归一化为实际十六进制颜色，保存配置及导出成功的 JSON 都返回实际色值。
+`examples/layout-rich.json` 演示醒目专栏、罗兰紫、Nord 代码底色、编号图注与段落缩进的组合。
+主题是标题边框、对齐、字体、引用框等可导出样式的组合，代码主题为整体配色预设，
+没有复制第三方主题文件。段落首行缩进仅作用于正文顶层段落，不缩进图片、图注、引用和表格。
+图注编号仅为存在图注文字的图片连续编号。
 
 图注使用真实文字参与预览与导出，选定字段没有文字则不补图注。字体不内嵌，浏览器和 Word
 缺少对应字体时会替代；代码块仅提供整体配色，暂不提供逐词语法高亮。

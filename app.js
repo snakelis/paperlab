@@ -1,7 +1,7 @@
 import { marked } from './node_modules/marked/lib/marked.esm.js';
 import DOMPurify from './node_modules/dompurify/dist/purify.es.mjs';
 
-import { layoutDefaults, fontFamilies, validateLayout, getLayout } from './layout.js';
+import { layoutDefaults, fontFamilies, articleThemes, accentPresets, codeThemes, validateLayout, getLayout } from './layout.js';
 
 const $ = (id) => document.getElementById(id);
 const editor = $('editor');
@@ -24,6 +24,52 @@ DOMPurify.addHook('uponSanitizeAttribute', (node, attribute) => {
   }
 });
 
+// 控件和 AI 样式目录来自同一份定义，避免新增选项只在界面中生效。
+for (const [id, [name, description]] of Object.entries(articleThemes)) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'theme-card';
+  button.dataset.theme = id;
+  const swatch = document.createElement('span');
+  swatch.className = `swatch ${id}`;
+  swatch.textContent = 'Aa';
+  const label = document.createElement('b');
+  label.textContent = name;
+  const hint = document.createElement('small');
+  hint.textContent = description;
+  button.append(swatch, label, hint);
+  document.querySelector('.theme-options').append(button);
+}
+for (const [id, [name, color]] of Object.entries(accentPresets)) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'accent-chip';
+  button.dataset.accent = id;
+  button.style.setProperty('--chip-color', color);
+  button.setAttribute('aria-label', `${name} ${color}`);
+  button.title = `${name} ${color}`;
+  const dot = document.createElement('span');
+  dot.setAttribute('aria-hidden', 'true');
+  button.append(dot, document.createTextNode(name));
+  button.addEventListener('click', () => {
+    state.accent = color;
+    syncAccent();
+    render();
+  });
+  $('accent-presets').append(button);
+}
+for (const [id, [name]] of Object.entries(codeThemes)) $('codeTheme').add(new Option(name, id));
+
+function syncAccent() {
+  $('accent').value = state.accent;
+  $('accent-value').textContent = state.accent.toUpperCase();
+  const preset = Object.values(accentPresets).find(([, color]) => color.toLowerCase() === state.accent.toLowerCase());
+  $('accent-name').textContent = preset ? preset[0] : '自定义';
+  document.querySelectorAll('[data-accent]').forEach((button) => {
+    button.setAttribute('aria-pressed', String(accentPresets[button.dataset.accent][1].toLowerCase() === state.accent.toLowerCase()));
+  });
+}
+
 function notify(message, error = false) {
   const status = $('status');
   status.textContent = message;
@@ -40,15 +86,10 @@ function readSaved() {
     return {
       title: typeof saved.title === 'string' ? saved.title.slice(0, 200) : defaults.title,
       markdown: saved.markdown,
-      theme: ['journal', 'editorial', 'technical'].includes(saved.theme) ? saved.theme : defaults.theme,
-      accent: /^#[0-9a-f]{6}$/i.test(saved.accent) ? saved.accent : defaults.accent,
-      fontSize: ['14', '15', '16', '17', '18', '19', '20'].includes(saved.fontSize) ? saved.fontSize : defaults.fontSize,
-      lineHeight: ['1.7', '1.9', '2.1'].includes(saved.lineHeight) ? saved.lineHeight : defaults.lineHeight,
-      width: ['375', '480', '680'].includes(saved.width) ? saved.width : defaults.width,
-      footnotes: typeof saved.footnotes === 'boolean' ? saved.footnotes : defaults.footnotes,
-      font: ['theme', ...Object.keys(fontFamilies)].includes(saved.font) ? saved.font : defaults.font,
-      codeTheme: ['dark', 'light', 'warm'].includes(saved.codeTheme) ? saved.codeTheme : defaults.codeTheme,
-      caption: ['none', 'alt', 'title'].includes(saved.caption) ? saved.caption : defaults.caption,
+      ...Object.fromEntries(Object.entries(layoutDefaults).map(([key, fallback]) => {
+        try { return [key, validateLayout({ [key]: saved[key] })[key]]; }
+        catch { return [key, fallback]; }
+      })),
       images: Object.fromEntries(Object.entries(saved.images || {}).filter(([id, data]) =>
         /^local-image:[\da-f-]+$/i.test(id) && typeof data === 'string' && /^data:image\/(png|jpeg|webp|gif);base64,/i.test(data))),
     };
@@ -112,16 +153,25 @@ function render() {
     });
     preview.append(section);
   }
+  let captionNumber = 0;
   for (const image of preview.querySelectorAll('img')) {
     const text = state.caption === 'alt' ? image.alt : state.caption === 'title' ? image.title : '';
     if (text) {
       const caption = document.createElement('span');
       caption.className = 'image-caption';
-      caption.textContent = text;
+      caption.textContent = state.captionFormat === 'numbered' ? `图 ${++captionNumber}：${text}` : text;
       image.after(caption);
     }
   }
   preview.dataset.codeTheme = state.codeTheme;
+  preview.dataset.paragraphStyle = state.paragraphStyle;
+  const [, codeBackground, codeText, codeBorder] = codeThemes[state.codeTheme];
+  for (const [key, value] of Object.entries({ 'code-bg': codeBackground, 'code-text': codeText, 'code-border': codeBorder })) {
+    preview.style.setProperty(`--${key}`, value);
+  }
+  const tint = (amount) => `rgb(${state.accent.slice(1).match(/../g).map((hex) => Math.round(parseInt(hex, 16) * (1 - amount) + 255 * amount)).join(', ')})`;
+  preview.style.setProperty('--accent-soft', tint(.94));
+  preview.style.setProperty('--accent-border', tint(.72));
   preview.style.fontFamily = fontFamilies[state.font] || '';
   preview.dataset.theme = state.theme;
   preview.style.setProperty('--accent', state.accent);
@@ -138,13 +188,13 @@ function syncControls() {
   title.value = state.title;
   editor.value = state.markdown;
   $('accent').value = state.accent;
-  $('accent-value').textContent = state.accent.toUpperCase();
+  syncAccent();
   $('font-size').value = state.fontSize;
   $('font-size-value').textContent = `${state.fontSize} px`;
   $('line-height').value = state.lineHeight;
   $('preview-width').value = state.width;
   $('footnotes').checked = state.footnotes;
-  for (const field of ['font', 'codeTheme', 'caption']) $(field).value = state[field];
+  for (const field of ['font', 'codeTheme', 'caption', 'captionFormat', 'paragraphStyle']) $(field).value = state[field];
   document.querySelectorAll('[data-theme].theme-card').forEach((button) => {
     const active = button.dataset.theme === state.theme;
     button.classList.toggle('active', active);
@@ -223,18 +273,16 @@ editor.addEventListener('input', () => {
 });
 title.addEventListener('input', render);
 document.querySelectorAll('.theme-card').forEach((button) => button.addEventListener('click', () => {
-  const themeDefaults = { journal: '#087f74', editorial: '#9b6c36', technical: '#426da8' };
   state.theme = button.dataset.theme;
-  state.accent = themeDefaults[state.theme];
   state.markdown = editor.value;
   state.title = title.value;
   syncControls();
 }));
 
-for (const [id, field] of [['accent', 'accent'], ['font-size', 'fontSize'], ['line-height', 'lineHeight'], ['preview-width', 'width'], ['footnotes', 'footnotes'], ['font', 'font'], ['codeTheme', 'codeTheme'], ['caption', 'caption']]) {
+for (const [id, field] of [['accent', 'accent'], ['font-size', 'fontSize'], ['line-height', 'lineHeight'], ['preview-width', 'width'], ['footnotes', 'footnotes'], ['font', 'font'], ['codeTheme', 'codeTheme'], ['caption', 'caption'], ['captionFormat', 'captionFormat'], ['paragraphStyle', 'paragraphStyle']]) {
   $(id).addEventListener('input', () => {
     state[field] = id === 'footnotes' ? $(id).checked : $(id).value;
-    $('accent-value').textContent = state.accent.toUpperCase();
+    syncAccent();
     $('font-size-value').textContent = `${state.fontSize} px`;
     render();
   });

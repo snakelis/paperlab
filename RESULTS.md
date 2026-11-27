@@ -5,7 +5,7 @@
 ## 已实现与确认
 
 独立目录：`/mnt/d/web/htdocs/snakelis/wechat-markdown-lab`。
-初版 Git 分支：`feat/markdown-feasibility`；Word 与插图扩展分支：`feat/docx-export`；AI 排版扩展分支：`feat/ai-typesetting`。
+初版 Git 分支：`feat/markdown-feasibility`；Word 与插图扩展分支：`feat/docx-export`；AI 排版扩展分支：`feat/ai-typesetting`；样式扩充分支：`feat/richer-export-styles`。
 演示地址：`http://localhost:8766`，测试服务端口：18766。
 
 使用用户提供的钱包文章全文验证：6 个二级标题、1 个三级标题、7 个引用块、
@@ -20,9 +20,11 @@
 
 - `pnpm install --frozen-lockfile`：通过，使用已提交锁文件可复现依赖。
 - `node --check app.js`、`node --check docx-export.js`、`node --check tests/editor.spec.js`：通过。
-- `pnpm test`：初版 9 项通过，Word 与图片扩展后 13 项通过，AI 排版扩展后 **16 项通过**，Chromium 实际执行。
+- `pnpm test`：初版 9 项通过，Word 与图片扩展后 13 项通过，AI 排版扩展后 16 项通过，样式扩充后 **19 项通过**，Chromium 实际执行。
 - 新增 `node --check layout.js`、`node --check scripts/export.mjs`：通过。
 - `node scripts/export.mjs --input sample.md --config examples/layout.json --output artifacts/ai-wallet.docx`：成功输出 DOCX 与 JSON。
+- `node scripts/export.mjs --list-styles`：成功返回完整样式目录。
+- 使用 `examples/layout-rich.json` 导出 `artifacts/rich-wallet.docx`：成功，预设颜色归一化为实际色值。
 - `git diff --check`：通过。
 - 本地 HTTP 检查：首页、脚本、样稿、Marked、DOMPurify 均返回 200。
 - 人工查看桌面、手机截图；390 px 手机布局自动检查未发生横向溢出。
@@ -53,10 +55,17 @@
     楷体字体配置、暖色代码背景均在 OOXML 中确认。
 16. AI 命令拒绝越界相对路径、指向目录外的软链接、损坏图片、远程图片和无效配置，
     非零退出并保留已有目标文件。
+17. 9 款文章主题、18 款可点选主题色、8 款代码配色均出现在界面；验证全部主题色切换、
+    自定义颜色、切换主题保留颜色、刷新恢复和重置。检查侧栏主题列表保持可见高度。
+18. 遍历 18 组配置，覆盖全部 9 款文章主题、18 款颜色和 8 款代码配色，实际导出并解压 DOCX，
+    验证正文、颜色、代码底色、表格、12/24 px 字号、黑体/等线字体和非零首行缩进。
+    AI 图文用例同时确认编号图注与命名颜色生效。
+19. AI 样式发现命令返回完整目录；验证颜色 ID 归一化以及无效主题、颜色、字号、图注格式被拒绝。
 
 CLI 与 UI 共用 `layout.js` 配置白名单、页面排版逻辑及 DOCX 转换器，没有增加依赖。
 AI 调用不触发外网请求，临时服务仅监听 loopback 随机端口，运行结束自动关闭。
-自定义 CSS、Mac 装饰和逐词代码高亮暂未实现。
+文章主题现有 9 款、主题色 18 款、代码配色 8 款；字体有 6 种明确选择及跟随主题，
+字号 12–24 px、5 档行距、3 种段落样式、2 种图注格式。自定义 CSS、Mac 装饰和逐词代码高亮暂未实现。
 
 图片在编辑区使用简短标记，避免 base64 占满正文；字数按实际预览文字计算。
 Markdown 导出时重新内嵌本机图片，验证没有依赖本机图片标记的残留。
@@ -73,6 +82,8 @@ Markdown 导出时重新内嵌本机图片，验证没有依赖本机图片标�
 - `wallet-with-images.docx`：使用钱包全文与两张本机生成示意配图的完整 Word 样例。
 - `ai-wallet.docx`：AI 命令生成的钱包全文。
 - `ai-with-images.docx`：自动化验证中的标题、图注、代码块、楷体与内嵌图片样例。
+- `rich-wallet.docx`：醒目专栏、罗兰紫与首行缩进的钱包文章。
+- `rich-styles.png`：扩充后的主题卡片和 18 色预设界面。
 - `with-images.png`：包含两张图片的实际预览。
 
 ## 隔离与未验证项

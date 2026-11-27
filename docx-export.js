@@ -37,7 +37,7 @@ export async function createDocx(html, title, width) {
   }
   for (const element of [container, ...container.querySelectorAll('*')]) {
     const family = element.style.fontFamily;
-    if (family) element.style.fontFamily = /KaiTi|STKaiti/i.test(family) ? '楷体' : /FangSong|STFangsong/i.test(family) ? '仿宋' : /Georgia|SimSun|Songti/i.test(family)
+    if (family) element.style.fontFamily = /SimHei|Heiti/i.test(family) ? '黑体' : /DengXian/i.test(family) ? '等线' : /KaiTi|STKaiti/i.test(family) ? '楷体' : /FangSong|STFangsong/i.test(family) ? '仿宋' : /Georgia|SimSun|Songti/i.test(family)
       ? '宋体' : /Consolas|monospace/i.test(family) ? 'Consolas' : '微软雅黑';
   }
   const warnings = [];

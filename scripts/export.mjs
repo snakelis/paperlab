@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { parseArgs } from 'node:util';
 import { chromium } from '@playwright/test';
 import { marked } from 'marked';
-import { validateLayout } from '../layout.js';
+import { validateLayout, layoutDefaults, layoutOptions, articleThemes, accentPresets, codeThemes, fontFamilies } from '../layout.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 let server;
@@ -14,8 +14,12 @@ let browser;
 let temporary;
 try {
   const { values } = parseArgs({ options: {
-    input: { type: 'string' }, config: { type: 'string' }, output: { type: 'string' }, title: { type: 'string' },
+    'list-styles': { type: 'boolean' }, input: { type: 'string' }, config: { type: 'string' }, output: { type: 'string' }, title: { type: 'string' },
   } });
+  if (values['list-styles']) {
+    process.stdout.write(`${JSON.stringify({ ok: true, defaults: layoutDefaults, options: layoutOptions, themes: articleThemes, colors: accentPresets, codeThemes, fonts: fontFamilies })}\n`);
+    process.exit(0);
+  }
   if (!values.input || !values.output || !/\.docx$/i.test(values.output)) throw new Error('用法：node scripts/export.mjs --input article.md --config layout.json --output article.docx [--title 标题]');
   const input = await realpath(values.input);
   const base = path.dirname(input);
