@@ -8,6 +8,7 @@
     "test": "playwright test"
   },
   "dependencies": {
+    "docx": "9.16.1",
     "dompurify": "3.5.0",
     "marked": "18.3.0"
   },

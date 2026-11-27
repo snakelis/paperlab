@@ -10,7 +10,7 @@ const MAX_TEXT = 2 * 1024 * 1024;
 const defaults = {
   title: '钱包里没有币：地址、私钥和助记词到底是什么关系',
   markdown: '', theme: 'journal', accent: '#087f74', fontSize: '16',
-  lineHeight: '1.9', width: '375', footnotes: true,
+  lineHeight: '1.9', width: '375', footnotes: true, images: {},
 };
 let state = { ...defaults };
 let renderTimer;
@@ -38,6 +38,8 @@ function readSaved() {
       lineHeight: ['1.7', '1.9', '2.1'].includes(saved.lineHeight) ? saved.lineHeight : defaults.lineHeight,
       width: ['375', '480', '680'].includes(saved.width) ? saved.width : defaults.width,
       footnotes: typeof saved.footnotes === 'boolean' ? saved.footnotes : defaults.footnotes,
+      images: Object.fromEntries(Object.entries(saved.images || {}).filter(([id, data]) =>
+        /^local-image:[\da-f-]+$/i.test(id) && typeof data === 'string' && /^data:image\/(png|jpeg|webp|gif);base64,/i.test(data))),
     };
   } catch {
     notify('无法读取本机草稿，可继续编辑并下载备份。', true);
@@ -48,8 +50,10 @@ function readSaved() {
 function save() {
   state.markdown = editor.value;
   state.title = title.value;
+  const images = Object.fromEntries(Object.entries(state.images).filter(([id]) => editor.value.includes(id)));
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    // 内存保留图片以便编辑撤销；落盘只保存当前文稿实际引用的图片。
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, images }));
     $('save-state').textContent = '已保存到本机';
   } catch {
     $('save-state').textContent = '本机保存失败，请下载备份';
@@ -58,7 +62,11 @@ function save() {
 
 function render() {
   clearTimeout(renderTimer);
-  const safeHTML = DOMPurify.sanitize(marked.parse(editor.value, { gfm: true, breaks: false }), {
+  const tokens = marked.lexer(editor.value, { gfm: true });
+  marked.walkTokens(tokens, (token) => {
+    if (token.type === 'image' && Object.hasOwn(state.images, token.href)) token.href = state.images[token.href];
+  });
+  const safeHTML = DOMPurify.sanitize(marked.parser(tokens), {
     USE_PROFILES: { html: true },
     FORBID_TAGS: ['style', 'input', 'form', 'button', 'iframe', 'video', 'audio'],
     FORBID_ATTR: ['style', 'class', 'id', 'name'],
@@ -102,7 +110,7 @@ function render() {
   preview.style.lineHeight = state.lineHeight;
   document.querySelector('.paper').style.width = `${state.width}px`;
   $('preview-size').textContent = `${state.width} px`;
-  const count = [...editor.value.replace(/\s/g, '')].length;
+  const count = [...preview.textContent.replace(/\s/g, '')].length;
   $('word-count').textContent = `${count.toLocaleString('zh-CN')} 字符 · 约 ${Math.max(1, Math.ceil(count / 400))} 分钟阅读`;
   save();
 }
@@ -165,8 +173,8 @@ function inlineHTML() {
   return section.outerHTML;
 }
 
-function download(content, extension, mime) {
-  const fileName = (title.value.trim() || '未命名文章').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').slice(0, 100);
+function download(content, extension, mime, documentTitle = title.value) {
+  const fileName = (documentTitle.trim() || '未命名文章').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').slice(0, 100);
   const url = URL.createObjectURL(new Blob([content], { type: mime }));
   const link = document.createElement('a');
   link.href = url;
@@ -230,21 +238,58 @@ $('import-file').addEventListener('change', async (event) => {
   } catch { notify('文件读取失败，当前文稿保持不变。', true); }
 });
 $('image-button').addEventListener('click', () => $('image-file').click());
-$('image-file').addEventListener('change', (event) => {
-  const file = event.target.files[0];
-  event.target.value = '';
-  if (!file) return;
-  if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024) {
-    notify('请选择不超过 5 MB 的 PNG、JPEG、WebP 或 GIF 图片。', true);
-    return;
+async function insertImages(files) {
+  for (const file of files) {
+    if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      notify('请选择不超过 5 MB 的 PNG、JPEG、WebP 或 GIF 图片。', true);
+      return;
+    }
+    try {
+      const bitmap = await createImageBitmap(file);
+      let data;
+      try {
+        if (bitmap.width * bitmap.height > 24000000) throw new Error();
+        if (['image/webp', 'image/gif'].includes(file.type)) {
+          const canvas = document.createElement('canvas');
+          canvas.width = bitmap.width;
+          canvas.height = bitmap.height;
+          canvas.getContext('2d').drawImage(bitmap, 0, 0);
+          data = canvas.toDataURL('image/png');
+        } else {
+          data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        }
+      } finally { bitmap.close(); }
+      const label = file.name.replace(/[\[\]<>\r\n]/g, '_');
+      const id = `local-image:${crypto.randomUUID()}`;
+      state.images = { ...state.images, [id]: data };
+      insert(`\n\n![${label}](${id})\n\n`);
+    } catch {
+      notify('图片无法读取或超过 2400 万像素，请使用有效图片重试。', true);
+      return;
+    }
   }
-  const reader = new FileReader();
-  reader.onload = () => {
-    insert(`\n\n![配图](${reader.result})\n\n`);
-    notify('图片已嵌入文稿；公众号正式使用前仍需核对图片是否成功转存。');
-  };
-  reader.onerror = () => notify('图片读取失败，请重试。', true);
-  reader.readAsDataURL(file);
+  notify('图片已放入正文并预览，导出 Word 时会一同嵌入；动图使用静态首帧。');
+}
+$('image-file').addEventListener('change', (event) => {
+  const files = [...event.target.files];
+  event.target.value = '';
+  if (files.length) insertImages(files);
+});
+editor.addEventListener('paste', (event) => {
+  const files = [...event.clipboardData.files].filter((file) => file.type.startsWith('image/'));
+  if (files.length) { event.preventDefault(); insertImages(files); }
+});
+editor.addEventListener('dragover', (event) => {
+  if (event.dataTransfer.types.includes('Files')) event.preventDefault();
+});
+editor.addEventListener('drop', (event) => {
+  const files = [...event.dataTransfer.files].filter((file) => file.type.startsWith('image/'));
+  if (files.length) { event.preventDefault(); insertImages(files); }
 });
 $('table-button').addEventListener('click', () => insert('\n\n| 项目 | 说明 |\n| --- | --- |\n| 内容 | 内容 |\n\n'));
 $('sample-button').addEventListener('click', async () => {
@@ -255,8 +300,9 @@ $('sample-button').addEventListener('click', async () => {
 $('download-markdown').addEventListener('click', () => {
   render();
   // 正文原样导出；标题使用文件名承载，避免重复插入标题。
-  download(editor.value, 'md', 'text/markdown;charset=utf-8');
-  notify('Markdown 已导出，正文保持原样。');
+  const portable = editor.value.replace(/local-image:[\da-f-]+/gi, (id) => state.images[id] || id);
+  download(portable, 'md', 'text/markdown;charset=utf-8');
+  notify('Markdown 已导出；本机插图已内嵌，可随文稿一起保存。');
 });
 $('download-html').addEventListener('click', () => {
   const safeTitle = document.createElement('span');
@@ -264,6 +310,25 @@ $('download-html').addEventListener('click', () => {
   const html = `<!doctype html>\n<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${safeTitle.innerHTML}</title></head><body style="margin:0;padding:24px;max-width:680px;margin-left:auto;margin-right:auto;background:#fff">${inlineHTML()}</body></html>`;
   download(html, 'html', 'text/html;charset=utf-8');
   notify('HTML 已导出：含内联样式，无需编辑器和外部 CSS。');
+});
+$('download-docx').addEventListener('click', async () => {
+  const button = $('download-docx');
+  const html = inlineHTML();
+  const documentTitle = title.value;
+  const width = preview.clientWidth;
+  button.disabled = true;
+  button.textContent = '正在生成 Word…';
+  try {
+    const { createDocx } = await import('./docx-export.js');
+    const blob = await createDocx(html, documentTitle, width);
+    download(blob, 'docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', documentTitle);
+    notify('Word 已导出：正文、基础样式和图片均已写入文档。');
+  } catch (error) {
+    notify(error instanceof Error ? error.message : 'Word 导出失败，请重试。', true);
+  } finally {
+    button.disabled = false;
+    button.textContent = '导出 Word .docx';
+  }
 });
 $('copy').addEventListener('click', async () => {
   const button = $('copy');

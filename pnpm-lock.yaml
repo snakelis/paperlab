@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      docx:
+        specifier: 9.16.1
+        version: 9.16.1
       dompurify:
         specifier: 3.5.0
         version: 3.5.0
@@ -26,15 +29,30 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
+  '@types/node@26.6.11':
+    resolution: {integrity: sha512-uUyQ2XLEz+EXh34lmS3GhKrkqn/8FU7KUiKRpk347At2bmnMVWss45yz8b4FG/tUtmV1tV/+TVkITItPROyeeQ==}
+
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
+
+  docx@9.16.1:
+    resolution: {integrity: sha512-AL6ECiw4TIz74jTk5/DpLCDNyhONelWLyLy35rKAbhihhpX28AuirWStdUsNn9DuTtzxCv+sT7Ta4WBlF7JixQ==}
+    engines: {node: '>=16'}
 
   dompurify@3.5.0:
     resolution: {integrity: sha512-LYC0ZkE8P1V42JsRYTwMdme/2ET8SpOc5AA2eOFjP/IadvRd2fwiT4TVz5vkfy0XUx12aS2UaRkTnfVPNOv9vw==}
 
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
+
   marked@18.3.0:
     resolution: {integrity: sha512-ed8zmPXlBb3UfGXN5iHMQyMhFpdqLgoV5umUXx/Q1R+FW3q8VpqpyoKUwlENL9appo2UMvNLURDVaT3AMOryGA==}
     engines: {node: '>= 20'}
+    hasBin: true
+
+  nanoid@6.0.2:
+    resolution: {integrity: sha512-hIvVOb9Qr1p/9CNNLOe0OlWvgx/ziTsVwKN/GDSsuArN2K0wDiafP3s0SWmsm7o2BdnyS8Z9Z64NFBUbn6ziBg==}
+    engines: {node: ^22 || ^24 || >=26}
     hasBin: true
 
   playwright-core@1.65.1:
@@ -47,23 +65,42 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
+  undici-types@8.9.0:
+    resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
+
 snapshots:
 
   '@playwright/test@1.65.1':
     dependencies:
       playwright: 1.65.1
 
+  '@types/node@26.6.11':
+    dependencies:
+      undici-types: 8.9.0
+
   '@types/trusted-types@2.0.7':
     optional: true
+
+  docx@9.16.1:
+    dependencies:
+      '@types/node': 26.6.11
+      fflate: 0.8.3
+      nanoid: 6.0.2
 
   dompurify@3.5.0:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
+  fflate@0.8.3: {}
+
   marked@18.3.0: {}
+
+  nanoid@6.0.2: {}
 
   playwright-core@1.65.1: {}
 
   playwright@1.65.1:
     dependencies:
       playwright-core: 1.65.1
+
+  undici-types@8.9.0: {}
