@@ -5,7 +5,7 @@
 ## 已实现与确认
 
 独立目录：`/mnt/d/web/htdocs/snakelis/wechat-markdown-lab`。
-初版 Git 分支：`feat/markdown-feasibility`；Word 与插图扩展分支：`feat/docx-export`；AI 排版扩展分支：`feat/ai-typesetting`；样式扩充分支：`feat/richer-export-styles`。
+初版 Git 分支：`feat/markdown-feasibility`；Word 与插图扩展分支：`feat/docx-export`；AI 排版扩展分支：`feat/ai-typesetting`；样式扩充分支：`feat/richer-export-styles`；独立 AI 工具分支：`feat/standalone-agent-tools`。
 演示地址：`http://localhost:8766`，测试服务端口：18766。
 
 使用用户提供的钱包文章全文验证：6 个二级标题、1 个三级标题、7 个引用块、
@@ -21,7 +21,9 @@
 - `pnpm install --frozen-lockfile`：通过，使用已提交锁文件可复现依赖。
 - `node --check app.js`、`node --check docx-export.js`、`node --check tests/editor.spec.js`：通过。
 - `pnpm test`：初版 9 项通过，Word 与图片扩展后 13 项通过，AI 排版扩展后 16 项通过，样式扩充后 **19 项通过**，Chromium 实际执行。
-- 新增 `node --check layout.js`、`node --check scripts/export.mjs`：通过。
+- 新增模块、MCP 服务、JSON 入口、Codex 模拟脚本及 Agent 测试均运行 `node --check`：通过。
+- `pnpm run test:agent`：4 项 Node 集成测试通过，含真实 MCP tools/call 和取消清理。
+- `pnpm run simulate:codex`：本机 Codex CLI 0.170.0 真实调用 MCP 成功；不是只发送固定 JSON 的测试客户端。
 - `node scripts/export.mjs --input sample.md --config examples/layout.json --output artifacts/ai-wallet.docx`：成功输出 DOCX 与 JSON。
 - `node scripts/export.mjs --list-styles`：成功返回完整样式目录。
 - 使用 `examples/layout-rich.json` 导出 `artifacts/rich-wallet.docx`：成功，预设颜色归一化为实际色值。
@@ -70,6 +72,39 @@ AI 调用不触发外网请求，临时服务仅监听 loopback 随机端口，�
 图片在编辑区使用简短标记，避免 base64 占满正文；字数按实际预览文字计算。
 Markdown 导出时重新内嵌本机图片，验证没有依赖本机图片标记的残留。
 
+## 独立 AI 工具接入验证
+
+仅在插件内增加接入层，没有注册到业务系统，也没有调用业务 API。
+工具定义及执行在 `agent-tools.js`，MCP stdio 在 `scripts/mcp.mjs`，
+单请求 JSON 入口在 `scripts/agent.mjs`。原命令行和工具层共用 `scripts/export-core.mjs`，
+仍复用网页预览的排版和 DOCX 转换，没有复制第二套渲染逻辑。
+
+新增 4 项 Node 集成测试覆盖：
+
+1. 真实生成含本地图片和编号图注的 DOCX，核验文件 SHA-256、字节数、颜色配置和清单，坏图失败后清理任务目录。
+2. 拒绝越界 Markdown、外部软链接、任意输出参数、错误配置和指向目录外的输出目录；取消调用不留下成品。
+3. 工具定义发现、JSON 文件请求、stdin 请求及失败非零退出码。
+4. MCP 初始化、工具发现、真实格式化、BUSY、未知方法、坏 JSON、调用取消及取消后目录清理。
+
+实际 Codex 模拟使用独立 `artifacts/codex-simulation-1795769036975/` 工作区，
+临时挂载 `paperlab` MCP 服务。Codex 先成功调用 `list_layout_styles`，
+再成功调用 `format_article`，生成钱包全文与一张测试配图的 DOCX。
+选用醒目专栏、罗兰紫、18 px、Nord 配色、编号图注、段落缩进。
+实际输出 17,583 字节，SHA-256 为：
+
+```text
+517e00cd8618bc390ede9e697e1ef81afd8f15561a481a236fea3123c0f01f34
+```
+
+独立解压核验 ZIP 完整、一张内嵌图片、一张表格、文章尾部和编号图注均存在。
+Codex 返回的文件路径和 SHA-256 与实际文件一致。
+复制的便捷样例为 `artifacts/codex-wallet.docx`，验证报告为 `artifacts/codex-report.json`；
+模拟目录中保留 JSONL 工具调用事件、最终回复与运行报告。
+测试图片只用于证明图片嵌入，不能作为文章正式配图。
+
+交给 Muse 的接入说明集中在 [MUSE-HANDOFF.md](MUSE-HANDOFF.md)，
+同时提供 MCP 配置和 JSON 请求示例。尚未在 Muse 客户端实际配置或调用。
+
 ## 演示产物
 
 以下均位于被 Git 忽略的 `artifacts/`，本地生成，不需要提交：
@@ -82,6 +117,7 @@ Markdown 导出时重新内嵌本机图片，验证没有依赖本机图片标�
 - `wallet-with-images.docx`：使用钱包全文与两张本机生成示意配图的完整 Word 样例。
 - `ai-wallet.docx`：AI 命令生成的钱包全文。
 - `ai-with-images.docx`：自动化验证中的标题、图注、代码块、楷体与内嵌图片样例。
+- `codex-wallet.docx`、`codex-report.json`：真实 Codex MCP 调用的 DOCX 与校验报告。
 - `rich-wallet.docx`：醒目专栏、罗兰紫与首行缩进的钱包文章。
 - `rich-styles.png`：扩充后的主题卡片和 18 色预设界面。
 - `with-images.png`：包含两张图片的实际预览。
@@ -92,7 +128,7 @@ Markdown 导出时重新内嵌本机图片，验证没有依赖本机图片标�
 连接数据库或 Redis、调用 Agent/Worker 接口、配置钉钉、操作公众号或发表文章。
 初版完成时原项目 `git status --short` 输出为空；本轮继续仅在独立原型目录修改。
 
-本次验证浏览器编辑、排版、导入导出、复制和 AI 命令行导出能力。没有验证微信编辑器清洗规则、
+本次验证浏览器编辑、排版、导入导出、复制、AI 命令行和 MCP 调用能力。没有验证微信编辑器清洗规则、
 data URL 图片转存、公众号最终发表效果、Windows localhost 转发或正式插件接入。
 Word 文件结构、文字与嵌入图片已验证，尚未在 Word/LibreOffice 渲染对比，不能承诺
 与浏览器或公众号在分页、换行、字体和全部 CSS 上像素一致。

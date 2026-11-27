@@ -54,7 +54,8 @@ Markdown 原文中的远程图片会由浏览器请求对应地址；本地插�
 ## AI 自动调用
 
 定位是供 AI 使用的独立排版模块：AI 交付 Markdown、图片和排版配置，工具生成 DOCX。
-当前只在独立目录验证，没有接入现有系统，也不在工具中调用 AI 改写正文。
+当前提供独立 MCP stdio 工具与 JSON 调用入口，已用 Codex CLI 真实调用验证；
+没有接入现有系统，也不在工具中调用 AI 改写正文。接入步骤和交付约定见 [Muse 接入说明](MUSE-HANDOFF.md)。
 
 安装依赖与 Chromium 后，在本目录执行：
 
@@ -132,11 +133,22 @@ node scripts/export.mjs --input sample.md --config examples/layout-rich.json --o
 浏览器自动化也可等待 `window.paperLabReady` 后使用 `window.paperLab.load({markdown,title,config})`、
 `getConfig()` 和 `exportDocx()`（返回 Blob）；CLI 已封装完整调用流程。
 
+## Agent 工具入口
+
+- `node scripts/mcp.mjs --workspace /absolute/workspace`：由 MCP 客户端启动。
+- `node scripts/agent.mjs --list-tools`：读取工具定义。
+- `node scripts/agent.mjs --workspace /absolute/workspace --request examples/agent-request.json`：JSON 调用。
+- 工具为 `list_layout_styles` 和 `format_article`；只读写指定文章工作目录，生成独立 DOCX、配置和文件清单。
+- 具体参数、输出、错误码、配置示例和 Muse 交付方式统一维护在 [Muse 接入说明](MUSE-HANDOFF.md)。
+
 ## 验证
 
 ```bash
 pnpm exec playwright install chromium  # 本机尚无匹配浏览器时执行
 pnpm test
+pnpm run test:agent
+# 已配置 Codex CLI 的环境可执行真实调用验证：
+pnpm run simulate:codex
 ```
 
 测试使用独立端口 18766。覆盖样稿结构、排版设置、草稿恢复、Markdown 往返、

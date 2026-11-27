@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "paperlab": {
+      "command": "node",
+      "args": [
+        "/mnt/d/web/htdocs/snakelis/wechat-markdown-lab/scripts/mcp.mjs",
+        "--workspace",
+        "/absolute/path/to/article-workspace"
+      ]
+    }
+  }
+}

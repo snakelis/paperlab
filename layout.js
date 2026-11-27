@@ -63,3 +63,7 @@ export function validateLayout(input = {}) {
 export function getLayout(state) {
   return Object.fromEntries(Object.keys(layoutDefaults).map((key) => [key, state[key]]));
 }
+
+export function layoutCatalog() {
+  return { defaults: layoutDefaults, options: layoutOptions, themes: articleThemes, colors: accentPresets, codeThemes, fonts: fontFamilies };
+}

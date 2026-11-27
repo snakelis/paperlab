@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "python3 -m http.server 8766 --bind 0.0.0.0",
     "test": "playwright test",
-    "export": "node scripts/export.mjs"
+    "export": "node scripts/export.mjs",
+    "agent": "node scripts/agent.mjs",
+    "mcp": "node scripts/mcp.mjs",
+    "test:agent": "node --test tests/agent.test.mjs",
+    "simulate:codex": "node scripts/simulate-codex.mjs"
   },
   "dependencies": {
     "docx": "9.16.1",
