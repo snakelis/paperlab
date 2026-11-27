@@ -2,9 +2,20 @@
 
 日期：2026-11-27。
 
+## PaperLab 仓库迁移验证
+
+2026-11-27：完整项目目录迁移到 `/mnt/d/web/htdocs/snakelis/paperlab`，保留 Git 历史、
+本地依赖和演示产物，统一包名、界面名称、DOCX 作者信息与 MCP 示例路径。
+浏览器草稿继续使用原存储键，避免已有草稿丢失。
+
+迁移后重新执行 `pnpm install --frozen-lockfile`、`pnpm test`（19 项）、
+`pnpm run test:agent`（4 项）、修改脚本的 `node --check` 和 `git diff --check`，均通过。
+本轮未重新运行付费模型的 Codex 模拟，未验证 Muse 或公众号导入；未修改主系统。
+Git 仓库只交付源码、测试、文档和锁文件，依赖目录与本地运行产物继续忽略。
+
 ## 已实现与确认
 
-独立目录：`/mnt/d/web/htdocs/snakelis/wechat-markdown-lab`。
+独立目录：`/mnt/d/web/htdocs/snakelis/paperlab`。
 初版 Git 分支：`feat/markdown-feasibility`；Word 与插图扩展分支：`feat/docx-export`；AI 排版扩展分支：`feat/ai-typesetting`；样式扩充分支：`feat/richer-export-styles`；独立 AI 工具分支：`feat/standalone-agent-tools`。
 演示地址：`http://localhost:8766`，测试服务端口：18766。
 

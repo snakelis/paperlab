@@ -7,6 +7,7 @@ const $ = (id) => document.getElementById(id);
 const editor = $('editor');
 const preview = $('preview');
 const title = $('title');
+// 保留原存储键，迁移项目目录与名称后仍可恢复已有浏览器草稿。
 const STORAGE_KEY = 'wechat-markdown-lab:draft:v1';
 const MAX_TEXT = 2 * 1024 * 1024;
 const defaults = {

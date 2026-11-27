@@ -50,7 +50,7 @@ export async function createDocx(html, title, width) {
   if (warnings.length) throw new Error(`Word 转换未完成：${warnings.map((warning) => warning.code).join('、')}。请检查文稿内容。`);
   const doc = new Document({
     title,
-    creator: '纸间排版实验室',
+    creator: 'PaperLab 文章排版工坊',
     styles: { default: { document: { run: { font: { ascii: 'Arial', hAnsi: 'Arial', eastAsia: '微软雅黑' } } } } },
     sections: [{
       // 页内正文宽度跟随当前预览，减少不同宽度造成的换行差异。

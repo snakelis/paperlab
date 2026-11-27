@@ -3,7 +3,7 @@
 ## 交付范围
 
 本插件给 AI 提供标准 MCP stdio 工具，以及一次一请求的 JSON 命令行入口。
-全部代码、测试和演示均在 `wechat-markdown-lab` 独立目录。
+全部代码、测试和演示均在 `paperlab` 独立目录。
 当前没有修改、连接或注册到发布系统，没有调用业务 API、上传、审批或发表文章。
 
 已使用本机 Codex CLI 真实连接本插件，依次调用 `list_layout_styles` 和 `format_article`，
@@ -42,7 +42,7 @@ Markdown 图片写作 `![图片说明](images/wallet.png "图注文字")`。
 服务启动命令：
 
 ```bash
-node /absolute/path/to/wechat-markdown-lab/scripts/mcp.mjs --workspace /absolute/path/to/article-workspace
+node /absolute/path/to/paperlab/scripts/mcp.mjs --workspace /absolute/path/to/article-workspace
 ```
 
 由 MCP 客户端启动并保持 stdin/stdout 连接，不需要手动启动网页、不需要固定 HTTP 端口。

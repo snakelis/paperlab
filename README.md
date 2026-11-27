@@ -1,10 +1,17 @@
-# 纸间 · Markdown 排版可行性验证
+# PaperLab · 文章排版工坊
 
 独立目录、独立 Git 仓库、独立依赖和 HTTP 端口。用于验证类似 Doocs 微信 Markdown
 编辑器的核心编辑排版能力，没有改动或连接 `agent-content-publisher` 及其 V2 项目。
 本项目是独立实现的最小原型，不是原网站的完整复制，也不是已经接入生产的插件。
 
 ## 运行
+
+获取源码后进入项目目录：
+
+```bash
+git clone https://github.com/snakelis/paperlab.git
+cd paperlab
+```
 
 需要 Node.js 20+、pnpm 和 Python 3。
 
