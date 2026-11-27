@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>纸间 · Markdown 排版实验室</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand"><span class="brand-icon">纸</span><div><strong>纸间 <span class="brand-divider">/</span> 排版实验室</strong><small>MARKDOWN TO WECHAT</small></div></div>
+    <span class="experiment">独立可行性原型</span>
+    <div class="header-actions">
+      <button id="import-button" class="button quiet">导入 Markdown</button>
+      <button id="download-markdown" class="button quiet">保存 .md</button>
+      <button id="download-html" class="button">导出 HTML</button>
+      <button id="copy" class="button primary">复制公众号格式 <span>↗</span></button>
+    </div>
+  </header>
+
+  <div class="notice"><span class="live-dot"></span>独立运行 · 不连接发布系统 · 不上传文章到服务器 <span class="notice-end">写好内容，让排版再走一步。</span></div>
+
+  <main>
+    <aside class="settings" aria-label="排版设置">
+      <div class="settings-title"><span>排版设置</span><span class="muted">01</span></div>
+      <label for="theme">文章主题</label>
+      <div class="theme-options">
+        <button type="button" data-theme="journal" class="theme-card active" aria-pressed="true"><span class="swatch journal">Aa</span><b>清爽笔记</b><small>留白 · 清晰 · 克制</small></button>
+        <button type="button" data-theme="editorial" class="theme-card" aria-pressed="false"><span class="swatch editorial">Aa</span><b>人文杂志</b><small>衬线 · 温暖 · 阅读</small></button>
+        <button type="button" data-theme="technical" class="theme-card" aria-pressed="false"><span class="swatch technical">Aa</span><b>技术专栏</b><small>理性 · 层次 · 精准</small></button>
+      </div>
+      <div class="setting-block"><label for="accent">主题颜色</label><div class="color-field"><input type="color" id="accent" value="#087f74"><span id="accent-value">#087F74</span><span>自定义</span></div></div>
+      <div class="setting-block"><label for="font-size">正文字号 <output id="font-size-value">16 px</output></label><input type="range" id="font-size" min="14" max="20" value="16" step="1"><div class="range-labels"><span>紧凑</span><span>舒展</span></div></div>
+      <div class="setting-block"><label for="line-height">行间距</label><select id="line-height"><option value="1.7">紧凑 · 1.7</option><option value="1.9" selected>舒适 · 1.9</option><option value="2.1">宽松 · 2.1</option></select></div>
+      <div class="setting-block"><label for="preview-width">预览宽度</label><select id="preview-width"><option value="375" selected>手机 · 375 px</option><option value="480">大屏 · 480 px</option><option value="680">阅读 · 680 px</option></select></div>
+      <label class="checkbox-label"><input type="checkbox" id="footnotes" checked><span>外链转换为文末引用</span></label>
+      <div class="settings-bottom"><b>从内容到成品</b><p>编辑 → 排版 → 复制 / 导出</p><p>复制后的样式已内联，可粘贴至公众号后台。平台最终效果仍需人工核对。</p></div>
+    </aside>
+
+    <section class="workspace">
+      <div class="document-heading"><div class="document-label">当前文稿 <span>本机浏览器自动保存</span></div><label for="title" class="sr-only">文章标题</label><input id="title" type="text" placeholder="给文章起一个标题" maxlength="200"><div class="document-meta"><span id="word-count">—</span><span id="save-state">准备载入</span><button id="sample-button">恢复示例文章</button></div></div>
+      <div class="editor-grid">
+        <section class="editor-pane"><div class="pane-toolbar"><strong><span class="pane-dot"></span>Markdown</strong><div><button id="image-button">插入图片</button><button id="table-button">插入表格</button></div></div><label for="editor" class="sr-only">Markdown 正文</label><textarea id="editor" spellcheck="false" placeholder="从这里开始写作，或导入 Markdown 文稿……"></textarea><footer class="pane-footer"><span>支持标题 / 引用 / 表格 / 列表 / 图片 / 代码</span><span>MD</span></footer></section>
+        <section class="preview-pane"><div class="pane-toolbar"><strong><span class="pane-dot green"></span>公众号预览</strong><span id="preview-size">375 px</span></div><div class="preview-scroll"><div class="paper"><div class="paper-eyebrow">ARTICLE PREVIEW <span>●</span></div><article id="preview" class="article" data-theme="journal"></article><div class="paper-end">· END ·</div></div></div><footer class="pane-footer"><span>全文实时预览 · 导出含内联样式</span><span>HTML</span></footer></section>
+      </div>
+    </section>
+  </main>
+  <input id="import-file" type="file" accept=".md,.markdown,text/markdown,text/plain" hidden>
+  <input id="image-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+  <div id="status" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
