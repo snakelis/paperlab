@@ -37,6 +37,27 @@ for (const [index, tab] of settingsTabs.entries()) {
   });
 }
 
+const connectionGuide = $('mcp-guide');
+$('mcp-guide-button').addEventListener('click', () => {
+  $('connection-copy-status').textContent = '';
+  connectionGuide.showModal();
+});
+$('mcp-guide-close').addEventListener('click', () => connectionGuide.close());
+for (const button of connectionGuide.querySelectorAll('[data-copy-target]')) {
+  button.addEventListener('click', async () => {
+    const status = $('connection-copy-status');
+    button.disabled = true;
+    try {
+      await navigator.clipboard.writeText($(button.dataset.copyTarget).textContent);
+      status.textContent = '已复制，可粘贴到终端或 AI 客户端。';
+      status.dataset.error = 'false';
+    } catch {
+      status.textContent = '无法自动复制，请选中下方示例文本手动复制。';
+      status.dataset.error = 'true';
+    } finally { button.disabled = false; }
+  });
+}
+
 const MAX_TEXT = 2 * 1024 * 1024;
 const defaults = {
   title: '钱包里没有币：地址、私钥和助记词到底是什么关系',

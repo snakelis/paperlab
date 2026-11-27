@@ -514,3 +514,38 @@
 @media (prefers-reduced-motion: reduce) {
   button { transition: none; }
 }
+
+/* 接入说明与正文样式隔离，避免影响文章和导出。 */
+a.btn { text-decoration: none; justify-content: center; }
+.connection-guide { width: min(800px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); margin: auto; padding: 0; border: 1px solid var(--border-mid); border-radius: 12px; background: var(--bg-surface); color: var(--text-main); box-shadow: 0 24px 80px #1c191733; overflow: auto; }
+.connection-guide::backdrop { background: #1c191766; }
+.guide-header { position: sticky; top: 0; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 16px; padding: 20px 24px 12px; border-bottom: 1px solid var(--border-light); background: var(--bg-surface); }
+.guide-eyebrow { color: var(--primary); font-size: 10px; letter-spacing: 1px; }
+.guide-header h2 { margin: 5px 0 0; font-size: 20px; }
+#connection-copy-status { grid-column: 1 / -1; min-height: 18px; margin: 0; font-size: 12px; color: var(--primary); }
+#connection-copy-status[data-error="true"] { color: #b91c1c; }
+.guide-content { padding: 8px 24px 24px; font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+.guide-content h3 { margin: 26px 0 8px; font-size: 15px; }
+.guide-content p { margin: 12px 0; color: var(--text-secondary); }
+.guide-content a { color: var(--primary-hover); }
+.guide-content code { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+.guide-note { padding: 14px 16px; border: 1px solid #a7f3d0; border-radius: 8px; background: var(--primary-soft); }
+.guide-note strong { color: var(--primary-hover); }
+.guide-note p { margin: 6px 0 0; }
+.guide-code-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; border: 1px solid var(--border-light); border-bottom: 0; border-radius: 6px 6px 0 0; background: var(--bg-app); color: var(--text-secondary); font-size: 11px; }
+.guide-content pre { margin: 0 0 14px; padding: 14px; border: 1px solid var(--border-light); border-radius: 0 0 6px 6px; background: var(--bg-subtle); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.75; }
+.guide-tools { margin: 12px 0; }
+.guide-tools dt { margin-top: 12px; font-weight: 600; color: var(--primary-hover); }
+.guide-tools dd { margin: 3px 0 0; color: var(--text-secondary); }
+.guide-fallback { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-light); }
+.guide-fallback summary { cursor: pointer; font-weight: 600; }
+.guide-repository { padding-top: 14px; border-top: 1px solid var(--border-light); }
+@media (min-width: 961px) and (max-width: 1200px) {
+  .app-header { height: auto; min-height: 52px; flex-wrap: wrap; gap: 8px; padding-block: 10px; }
+  .header-actions { width: 100%; flex-wrap: wrap; }
+}
+@media (max-width: 600px) {
+  .connection-guide { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
+  .guide-header { padding: 14px 16px 10px; }
+  .guide-content { padding: 4px 16px 16px; }
+}

@@ -21,6 +21,9 @@
     </div>
 
     <div class="header-actions">
+      <button id="mcp-guide-button" type="button" class="btn btn-ghost" aria-haspopup="dialog" aria-controls="mcp-guide">AI / MCP 接入</button>
+      <a class="btn btn-ghost" href="https://github.com/snakelis/paperlab" target="_blank" rel="noopener noreferrer" aria-label="GitHub 仓库（新窗口）">GitHub ↗</a>
+      <div class="divider-v" aria-hidden="true"></div>
       <button id="import-button" class="btn btn-ghost" title="导入本地 Markdown 文件">
         <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         导入 .md
@@ -240,6 +243,100 @@
       </div>
     </section>
   </main>
+
+  <dialog id="mcp-guide" class="connection-guide" aria-labelledby="mcp-guide-title" aria-describedby="mcp-guide-summary">
+    <header class="guide-header">
+      <div><span class="guide-eyebrow">PAPERLAB · AGENT TOOLS</span><h2 id="mcp-guide-title">AI / MCP 接入</h2></div>
+      <button id="mcp-guide-close" type="button" class="btn btn-secondary" autofocus>关闭</button>
+      <p id="connection-copy-status" role="status" aria-live="polite"></p>
+    </header>
+    <div class="guide-content">
+      <p id="mcp-guide-summary">让 AI 写好 Markdown 和本地图片，再由 PaperLab 生成带排版与图片的 Word 文档。</p>
+      <div class="guide-note"><strong>接入方式：本机 stdio</strong><p>先在 AI 客户端所在的电脑或运行环境安装工具，再由客户端启动 MCP 进程。当前网页地址不是远程 MCP 服务地址，不需要 API Key；浏览器里的草稿不会自动同步给 Agent。</p></div>
+
+      <section aria-labelledby="guide-install-title">
+        <h3 id="guide-install-title">1. 安装工具</h3>
+        <p>准备 Node.js 20+、Git 与 pnpm 10.32.1。在终端执行以下命令，完整安装依赖（请勿使用 <code>--prod</code>），并安装导出需要的 Chromium。</p>
+        <div class="guide-code-heading"><span>安装命令</span><button type="button" class="tool-btn" data-copy-target="guide-install" aria-label="复制安装命令">复制</button></div>
+        <pre><code id="guide-install">git clone https://github.com/snakelis/paperlab.git
+cd paperlab
+pnpm install --frozen-lockfile
+pnpm exec playwright install chromium</code></pre>
+        <p>另建一个已存在的文章工作目录，例如 <code>article-workspace</code>，放入 <code>wallet.md</code> 与 <code>images/wallet.png</code>。正文引用图片写作 <code>![图片说明](images/wallet.png "图注")</code>；图片路径相对于文稿所在目录。</p>
+      </section>
+
+      <section aria-labelledby="guide-config-title">
+        <h3 id="guide-config-title">2. 配置 MCP 客户端</h3>
+        <p>将以下配置加入客户端的 MCP 配置，替换两处绝对路径。外层配置字段以所用客户端要求为准；Windows 路径可写为 <code>C:/tools/paperlab/scripts/mcp.mjs</code>，不要混用 Windows 与 WSL 路径。</p>
+        <div class="guide-code-heading"><span>通用客户端配置</span><button type="button" class="tool-btn" data-copy-target="guide-mcp-config" aria-label="复制 MCP 配置">复制</button></div>
+        <pre><code id="guide-mcp-config">{
+  "mcpServers": {
+    "paperlab": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/paperlab/scripts/mcp.mjs",
+        "--workspace",
+        "/absolute/path/to/article-workspace"
+      ]
+    }
+  }
+}</code></pre>
+        <p>客户端会启动以下进程并连接其输入输出，无需启动编辑网页。请直接使用 <code>node</code>，避免包管理器的提示混入协议输出。</p>
+        <div class="guide-code-heading"><span>MCP 启动命令</span><button type="button" class="tool-btn" data-copy-target="guide-start" aria-label="复制 MCP 启动命令">复制</button></div>
+        <pre><code id="guide-start">node /absolute/path/to/paperlab/scripts/mcp.mjs --workspace /absolute/path/to/article-workspace</code></pre>
+      </section>
+
+      <section aria-labelledby="guide-tools-title">
+        <h3 id="guide-tools-title">3. 让 AI 调用工具</h3>
+        <dl class="guide-tools">
+          <dt><code>list_layout_styles</code></dt><dd>参数为 <code>{}</code>，查询主题、颜色、字体和排版参数。先查询，再选择配置。</dd>
+          <dt><code>format_article</code></dt><dd>读取工作目录中已有的 Markdown 和图片，生成完整 DOCX。调用参数示例如下。</dd>
+        </dl>
+        <div class="guide-code-heading"><span>format_article 参数</span><button type="button" class="tool-btn" data-copy-target="guide-tool-arguments" aria-label="复制工具调用参数">复制</button></div>
+        <pre><code id="guide-tool-arguments">{
+  "input": "wallet.md",
+  "title": "钱包入门",
+  "config": {
+    "theme": "bold",
+    "accent": "violet",
+    "fontSize": "18",
+    "caption": "title",
+    "captionFormat": "numbered"
+  }
+}</code></pre>
+        <p><code>input</code> 必填，使用工作目录内的 <code>.md</code> 或 <code>.markdown</code> 相对路径；<code>title</code>、<code>config</code> 可省略。字号、行距与宽度等数值参数使用字符串。</p>
+        <p>页面的「保存 AI 配置」导出的是排版 JSON，可作为这里的 <code>config</code> 使用，里面不包含正文、图片或 MCP 连接信息。</p>
+        <div class="guide-code-heading"><span>可直接交给 AI 的指令</span><button type="button" class="tool-btn" data-copy-target="guide-prompt" aria-label="复制 AI 调用指令">复制</button></div>
+        <pre><code id="guide-prompt">在指定工作目录准备好 Markdown 文稿和本地图片。先调用 PaperLab 的 list_layout_styles 查询支持的排版，再调用 format_article 生成含图 DOCX。检查返回 ok=true，并保留 artifact.absolutePath、sha256 和实际 config。失败时报告 error，不伪造文件路径，不上传或发表文章。</code></pre>
+      </section>
+
+      <section aria-labelledby="guide-output-title">
+        <h3 id="guide-output-title">4. 读取生成结果</h3>
+        <p>成功返回 <code>ok: true</code>，文件位于工作目录的 <code>.paperlab-output/&lt;id&gt;/article.docx</code>，同目录包含 <code>layout.json</code> 与 <code>manifest.json</code>。</p>
+        <p><code>artifact.absolutePath</code> 是运行主机上的文件路径，<code>bytes</code> 是文件大小，<code>sha256</code> 用于核验文件；它们不是公网下载地址或业务系统素材 ID。</p>
+        <p>失败返回 <code>ok: false</code> 与 <code>error.code/message</code>，MCP 另带 <code>isError: true</code>。遇到 <code>BUSY</code> 等待上次任务完成后重试；图片缺失或损坏会阻止导出。</p>
+        <p>文稿限 2 MB，单张图片限 5 MB、2400 万像素；支持 PNG、JPEG、WebP、GIF。图片需位于文稿目录或其子目录；Agent 导出不读取网络图片，请先准备本地文件。工具不改写正文，不上传、审批或发布文章。</p>
+      </section>
+
+      <details class="guide-fallback">
+        <summary>不使用 MCP？通过 JSON 命令行调用</summary>
+        <p>在插件目录新建 <code>request.json</code>，顶层用 <code>name</code> 和 <code>arguments</code> 包装工具名与参数：</p>
+        <div class="guide-code-heading"><span>request.json</span><button type="button" class="tool-btn" data-copy-target="guide-json-request" aria-label="复制 JSON 请求">复制</button></div>
+        <pre><code id="guide-json-request">{
+  "name": "format_article",
+  "arguments": {
+    "input": "wallet.md",
+    "title": "钱包入门",
+    "config": { "theme": "bold", "accent": "violet" }
+  }
+}</code></pre>
+        <div class="guide-code-heading"><span>执行命令</span><button type="button" class="tool-btn" data-copy-target="guide-json-command" aria-label="复制 JSON 调用命令">复制</button></div>
+        <pre><code id="guide-json-command">node scripts/agent.mjs --workspace /absolute/path/to/article-workspace --request request.json</code></pre>
+        <p>成功退出码为 0，失败为 1，标准输出为 JSON；不传 <code>--request</code> 时从 stdin 读取单个请求。</p>
+      </details>
+      <p class="guide-repository">源码与更新：<a href="https://github.com/snakelis/paperlab" target="_blank" rel="noopener noreferrer">github.com/snakelis/paperlab ↗</a></p>
+    </div>
+  </dialog>
 
   <input id="import-file" type="file" accept=".md,.markdown,text/markdown,text/plain" hidden>
   <input id="image-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>

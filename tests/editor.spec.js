@@ -474,3 +474,57 @@ test('新版工作台在桌面、平板和手机保留全部设置与导出操�
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `宽度 ${width} 切换后无页面横向溢出`).toBe(true);
   }
 });
+
+test('页面提供完整 MCP 指引和 GitHub 入口，示例可复制且关闭后恢复焦点', async ({ page }) => {
+  await loaded(page);
+  const entry = page.getByRole('button', { name: 'AI / MCP 接入' });
+  const repository = page.getByRole('link', { name: 'GitHub 仓库（新窗口）' });
+  await expect(repository).toHaveAttribute('href', 'https://github.com/snakelis/paperlab');
+  await expect(repository).toHaveAttribute('rel', 'noopener noreferrer');
+  const original = await page.locator('#editor').inputValue();
+  await entry.click();
+  const dialog = page.getByRole('dialog', { name: 'AI / MCP 接入' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('当前网页地址不是远程 MCP 服务地址');
+  await expect(dialog).toContainText('list_layout_styles');
+  await expect(dialog).toContainText('format_article');
+  await expect(dialog.getByRole('button', { name: '关闭', exact: true })).toBeFocused();
+  await dialog.getByRole('button', { name: '复制 MCP 配置', exact: true }).click();
+  await expect(dialog.locator('#connection-copy-status')).toContainText('已复制');
+  const config = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
+  expect(config.mcpServers.paperlab).toEqual({ command: 'node', args: ['/absolute/path/to/paperlab/scripts/mcp.mjs', '--workspace', '/absolute/path/to/article-workspace'] });
+  const args = JSON.parse(await page.locator('#guide-tool-arguments').textContent());
+  expect(validateLayout(args.config)).toMatchObject({ theme: 'bold', fontSize: '18', accent: '#7952b3' });
+  await dialog.getByText('不使用 MCP？通过 JSON 命令行调用', { exact: true }).click();
+  await dialog.getByRole('button', { name: '复制 JSON 请求', exact: true }).click();
+  const request = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
+  expect(request).toMatchObject({ name: 'format_article', arguments: { input: 'wallet.md' } });
+  expect(() => validateLayout(request.arguments.config)).not.toThrow();
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+  await expect(entry).toBeFocused();
+  await expect(page.locator('#editor')).toHaveValue(original);
+  const waiting = page.waitForEvent('download');
+  await page.locator('#download-html').click();
+  const html = await readFile(await (await waiting).path(), 'utf8');
+  expect(html).not.toMatch(/mcpServers|复制 MCP 配置|接入方式：本机 stdio/);
+  await entry.click();
+  await dialog.getByRole('button', { name: '关闭', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+});
+
+test('MCP 指引在手机端可阅读，复制受限时明确提示且不误报成功', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await loaded(page);
+  await page.getByRole('button', { name: 'AI / MCP 接入' }).click();
+  const dialog = page.getByRole('dialog', { name: 'AI / MCP 接入' });
+  expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('denied'); } } }));
+  await dialog.getByRole('button', { name: '复制 MCP 配置', exact: true }).click();
+  await expect(dialog.locator('#connection-copy-status')).toHaveText('无法自动复制，请选中下方示例文本手动复制。');
+  await expect(dialog.locator('#connection-copy-status')).toHaveAttribute('data-error', 'true');
+  await expect(dialog.getByRole('button', { name: '复制 MCP 配置', exact: true })).toBeEnabled();
+  await expect(dialog.getByRole('button', { name: '关闭', exact: true })).toBeInViewport();
+  await dialog.getByRole('button', { name: '关闭', exact: true }).click();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
