@@ -7,50 +7,244 @@
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
+  <!-- 极简高密度顶栏 -->
   <header class="app-header">
-    <div class="brand"><span class="brand-icon">纸</span><div><strong>PaperLab <span class="brand-divider">/</span> 文章排版工坊</strong><small>MARKDOWN TO WECHAT</small></div></div>
-    <span class="experiment">独立可行性原型</span>
+    <div class="brand">
+      <div class="brand-icon" aria-hidden="true">纸</div>
+      <div class="brand-text">
+        <strong>PaperLab</strong>
+        <span class="brand-tag">公众号排版工坊</span>
+      </div>
+      <span class="status-pill" title="正文与本地插图不主动上传；远程图片仍可能产生网络请求">
+        <span class="live-dot"></span>内容本机保存
+      </span>
+    </div>
+
     <div class="header-actions">
-      <button id="import-button" class="button quiet">导入 Markdown</button>
-      <button id="download-markdown" class="button quiet">保存 .md</button>
-      <button id="download-html" class="button">导出 HTML</button>
-      <button id="download-docx" class="button">导出 Word .docx</button>
-      <button id="copy" class="button primary">复制公众号格式 <span>↗</span></button>
+      <button id="import-button" class="btn btn-ghost" title="导入本地 Markdown 文件">
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        导入 .md
+      </button>
+      <button id="download-markdown" class="btn btn-ghost">保存 .md</button>
+      <button id="download-html" class="btn btn-ghost">导出 HTML</button>
+      <div class="divider-v"></div>
+      <button id="download-docx" class="btn btn-secondary">
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        导出 Word
+      </button>
+      <button id="copy" class="btn btn-primary">
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        复制公众号格式
+      </button>
     </div>
   </header>
 
-  <div class="notice"><span class="live-dot"></span>独立运行 · 不连接发布系统 · 不上传文章到服务器 <span class="notice-end">写好内容，让排版再走一步。</span></div>
-
-  <main>
+  <main class="app-main">
+    <!-- 左侧配置栏：280px 宽 + 分组 Tab -->
     <aside class="settings" aria-label="排版设置">
-      <div class="settings-title"><span>排版设置</span><span class="muted">01</span></div>
-      <label id="theme-label">文章主题 <span>9 款</span></label>
-      <div class="theme-options" aria-labelledby="theme-label"></div>
-      <div class="setting-block"><label id="palette-label">主题色 <span>18 款预设</span></label><div id="accent-presets" class="accent-presets" role="group" aria-labelledby="palette-label"></div><label for="accent">自定义主题色</label><div class="color-field"><input type="color" id="accent" value="#087f74"><span id="accent-value">#087F74</span><span id="accent-name">翡翠绿</span></div></div>
-      <div class="setting-block"><label for="font">正文字体</label><select id="font"><option value="theme">跟随主题</option><option value="sans">微软雅黑</option><option value="serif">宋体</option><option value="kai">楷体</option><option value="fang">仿宋</option><option value="heiti">黑体</option><option value="deng">等线</option></select></div>
-      <div class="setting-block"><label for="codeTheme">代码块配色</label><select id="codeTheme"></select></div>
-      <div class="setting-block"><label for="caption">图片说明</label><select id="caption"><option value="none">不显示图注</option><option value="alt">使用图片替代文字 alt</option><option value="title">使用图片标题 title</option></select></div>
-      <div class="setting-block"><label for="captionFormat">图注格式</label><select id="captionFormat"><option value="plain">简洁说明</option><option value="numbered">自动编号 · 图 1：说明</option></select></div>
-      <div class="setting-block"><label for="paragraphStyle">段落样式</label><select id="paragraphStyle"><option value="normal">标准段落</option><option value="indent">首行缩进两字</option><option value="compact">紧凑段落</option></select></div>
-      <div class="setting-block"><label for="font-size">正文字号 <output id="font-size-value">16 px</output></label><input type="range" id="font-size" min="12" max="24" value="16" step="1"><div class="range-labels"><span>紧凑</span><span>舒展</span></div></div>
-      <div class="setting-block"><label for="line-height">行间距</label><select id="line-height"><option value="1.5">精简 · 1.5</option><option value="1.7">紧凑 · 1.7</option><option value="1.9" selected>舒适 · 1.9</option><option value="2.1">宽松 · 2.1</option><option value="2.3">疏朗 · 2.3</option></select></div>
-      <div class="setting-block"><label for="preview-width">预览宽度</label><select id="preview-width"><option value="375" selected>手机 · 375 px</option><option value="480">大屏 · 480 px</option><option value="680">阅读 · 680 px</option></select></div>
-      <label class="checkbox-label"><input type="checkbox" id="footnotes" checked><span>外链转换为文末引用</span></label>
-      <div class="setting-block"><button id="reset-layout" class="button">重置排版</button><button id="download-config" class="button">保存 AI 配置</button></div>
-      <div class="settings-bottom"><b>从内容到成品</b><p>编辑 / 插图 → 预览 → 导出 Word</p><p>图片与基础排版一起写入 DOCX。公众号导入后的最终样式仍需核对。</p></div>
+      <div class="settings-tabs" role="tablist" aria-label="排版设置分组">
+        <button type="button" class="tab-btn active" id="tab-style" role="tab" aria-selected="true" aria-controls="panel-style" tabindex="0">主题与色彩</button>
+        <button type="button" class="tab-btn" id="tab-layout" role="tab" aria-selected="false" aria-controls="panel-layout" tabindex="-1">版式与细节</button>
+      </div>
+
+      <!-- Tab 1：主题与色彩 -->
+      <div class="tab-panel active" id="panel-style" role="tabpanel" aria-labelledby="tab-style">
+        <div class="control-group">
+          <div class="control-header">
+            <label id="theme-label">文章主题</label>
+            <span class="badge">9 款</span>
+          </div>
+          <div class="theme-options" aria-labelledby="theme-label"></div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-header">
+            <label id="palette-label">主题色</label>
+            <span id="accent-name" class="badge accent-badge">翡翠绿</span>
+          </div>
+          <div id="accent-presets" class="accent-presets" role="group" aria-labelledby="palette-label"></div>
+          <div class="color-picker-row">
+            <label for="accent" class="color-picker-label">
+              <input type="color" id="accent" value="#087f74">
+              <span>自定义色值</span>
+            </label>
+            <code id="accent-value">#087F74</code>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-header">
+            <label for="codeTheme">代码块风格</label>
+          </div>
+          <select id="codeTheme" class="select-input"></select>
+        </div>
+      </div>
+
+      <!-- Tab 2：版式与细节 -->
+      <div class="tab-panel" id="panel-layout" role="tabpanel" aria-labelledby="tab-layout" hidden>
+        <div class="control-group">
+          <div class="control-header">
+            <label for="font">正文字体</label>
+          </div>
+          <select id="font" class="select-input">
+            <option value="theme">跟随主题默认</option>
+            <option value="sans">无衬线 · 微软雅黑 / 苹方</option>
+            <option value="serif">衬线 · 宋体</option>
+            <option value="kai">楷体</option>
+            <option value="fang">仿宋</option>
+            <option value="heiti">黑体</option>
+            <option value="deng">等线</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <div class="control-header">
+            <label for="font-size">正文字号</label>
+            <output id="font-size-value" class="mono-val">16 px</output>
+          </div>
+          <input type="range" id="font-size" class="range-input" min="12" max="24" value="16" step="1">
+          <div class="range-ticks"><span>12px</span><span>16px</span><span>20px</span><span>24px</span></div>
+        </div>
+
+        <div class="grid-2col">
+          <div class="control-group">
+            <div class="control-header"><label for="line-height">行间距</label></div>
+            <select id="line-height" class="select-input">
+              <option value="1.5">1.5 · 紧凑</option>
+              <option value="1.7">1.7 · 适中</option>
+              <option value="1.9" selected>1.9 · 舒适</option>
+              <option value="2.1">2.1 · 宽松</option>
+              <option value="2.3">2.3 · 疏朗</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <div class="control-header"><label for="paragraphStyle">段落样式</label></div>
+            <select id="paragraphStyle" class="select-input">
+              <option value="normal">标准段距</option>
+              <option value="indent">首行缩进</option>
+              <option value="compact">紧凑段距</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-2col">
+          <div class="control-group">
+            <div class="control-header"><label for="caption">图注来源</label></div>
+            <select id="caption" class="select-input">
+              <option value="alt">图片 alt</option>
+              <option value="title">图片 title</option>
+              <option value="none" selected>不显示图注</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <div class="control-header"><label for="captionFormat">图注样式</label></div>
+            <select id="captionFormat" class="select-input">
+              <option value="numbered">图 1：编号</option>
+              <option value="plain" selected>纯文本</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-header"><label for="preview-width">预览视口宽度</label></div>
+          <select id="preview-width" class="select-input">
+            <option value="375" selected>手机竖屏 · 375 px</option>
+            <option value="480">大屏手机 · 480 px</option>
+            <option value="680">桌面阅读 · 680 px</option>
+          </select>
+        </div>
+
+        <label class="switch-row" for="footnotes">
+          <span>外链转为文末参考引用</span>
+          <input type="checkbox" id="footnotes" checked>
+        </label>
+      </div>
+
+      <!-- 底部固定操作栏 -->
+      <div class="settings-footer">
+        <button id="reset-layout" type="button" class="btn-outline-sm">重置排版</button>
+        <button id="download-config" type="button" class="btn-outline-sm">保存 AI 配置</button>
+      </div>
     </aside>
 
+    <!-- 右侧主工作区 -->
     <section class="workspace">
-      <div class="document-heading"><div class="document-label">当前文稿 <span>本机浏览器自动保存</span></div><label for="title" class="sr-only">文章标题</label><input id="title" type="text" placeholder="给文章起一个标题" maxlength="200"><div class="document-meta"><span id="word-count">—</span><span id="save-state">准备载入</span><button id="sample-button">恢复示例文章</button></div></div>
       <div class="editor-grid">
-        <section class="editor-pane"><div class="pane-toolbar"><strong><span class="pane-dot"></span>Markdown</strong><div><button id="image-button">插入图片</button><button id="table-button">插入表格</button></div></div><label for="editor" class="sr-only">Markdown 正文</label><textarea id="editor" spellcheck="false" placeholder="从这里开始写作；也可粘贴或拖入图片……"></textarea><footer class="pane-footer"><span>图片支持选择 / 粘贴 / 拖放</span><span>MD</span></footer></section>
-        <section class="preview-pane"><div class="pane-toolbar"><strong><span class="pane-dot green"></span>公众号预览</strong><span id="preview-size">375 px</span></div><div class="preview-scroll"><div class="paper"><div class="paper-eyebrow">ARTICLE PREVIEW <span>●</span></div><article id="preview" class="article" data-theme="journal"></article><div class="paper-end">· END ·</div></div></div><footer class="pane-footer"><span>图文完整预览 · 支持 Word 导出</span><span>DOCX / HTML</span></footer></section>
+        <!-- 左栏：Markdown 写作区 -->
+        <section class="editor-pane">
+          <div class="pane-toolbar">
+            <div class="toolbar-left">
+              <span class="pane-dot"></span>
+              <strong>MARKDOWN 源码</strong>
+              <span class="sep">·</span>
+              <span id="save-state" class="meta-text">已自动保存</span>
+            </div>
+            <div class="toolbar-actions">
+              <button id="image-button" type="button" class="tool-btn">
+                <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                插图
+              </button>
+              <button id="table-button" type="button" class="tool-btn">
+                <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+                表格
+              </button>
+              <button id="sample-button" type="button" class="tool-btn muted">恢复示例</button>
+            </div>
+          </div>
+
+          <div class="title-bar">
+            <label for="title" class="sr-only">文章标题</label>
+            <input id="title" type="text" placeholder="在此输入文章标题..." maxlength="200">
+          </div>
+
+          <label for="editor" class="sr-only">Markdown 正文</label>
+          <textarea id="editor" spellcheck="false" placeholder="输入 Markdown 正文，支持直接粘贴或拖入本地图片..."></textarea>
+
+          <footer class="pane-footer">
+            <span>支持拖拽 / Ctrl+V 粘贴本地图片</span>
+            <span id="word-count" class="mono-val">—</span>
+          </footer>
+        </section>
+
+        <!-- 右栏：公众号仿真预览区 -->
+        <section class="preview-pane">
+          <div class="pane-toolbar">
+            <div class="toolbar-left">
+              <span class="pane-dot green"></span>
+              <strong>实时排版预览</strong>
+            </div>
+            <div class="toolbar-right">
+              <span id="preview-size" class="size-badge">375 px</span>
+            </div>
+          </div>
+
+          <div class="preview-scroll">
+            <div class="paper-shell">
+              <div class="phone-notch" aria-hidden="true">
+                <span>PaperLab</span>
+                <span class="phone-title">公众号文章预览</span>
+                <span>本地渲染</span>
+              </div>
+              <div class="paper">
+                <article id="preview" class="article" data-theme="journal"></article>
+                <div class="paper-end">— END —</div>
+              </div>
+            </div>
+          </div>
+
+          <footer class="pane-footer">
+            <span>图文完整预览 · 公众号导入效果需核对</span>
+            <span>WECHAT / DOCX</span>
+          </footer>
+        </section>
       </div>
     </section>
   </main>
+
   <input id="import-file" type="file" accept=".md,.markdown,text/markdown,text/plain" hidden>
   <input id="image-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
   <div id="status" role="status" aria-live="polite" hidden></div>
+
   <script type="importmap">{"imports":{"docx":"./node_modules/docx/dist/index.mjs","docx/math":"./node_modules/docx/dist/math.mjs"}}</script>
   <script type="module" src="./app.js"></script>
 </body>

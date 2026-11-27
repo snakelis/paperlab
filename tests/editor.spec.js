@@ -63,8 +63,11 @@ test('用户全文保留，标题、引用、表格、步骤和自查清单正�
 test('主题、字号、颜色、行间距和草稿刷新后保留', async ({ page }) => {
   await loaded(page);
   await page.locator('[data-theme="editorial"].theme-card').click();
+  await page.getByRole('tab', { name: '版式与细节' }).click();
   await page.locator('#font-size').fill('18');
+  await page.getByRole('tab', { name: '主题与色彩' }).click();
   await page.locator('#accent').fill('#713b77');
+  await page.getByRole('tab', { name: '版式与细节' }).click();
   await page.locator('#line-height').selectOption('2.1');
   await page.locator('#preview-width').selectOption('480');
   await page.locator('#title').fill('我的排版样稿');
@@ -145,6 +148,7 @@ test('不可信 Markdown 的脚本、事件、危险链接和嵌入页面被过�
   expect(await page.locator('#preview script, #preview iframe, #preview style, #preview [onerror], #preview [href^="javascript:"]').count()).toBe(0);
   expect(await page.evaluate(() => window.injected)).toBeUndefined();
   await expect(page.locator('.references')).toContainText('https://example.com/reference');
+  await page.getByRole('tab', { name: '版式与细节' }).click();
   await page.locator('#footnotes').uncheck();
   await expect(page.locator('#preview a[href="https://example.com/reference"]')).toHaveAttribute('rel', 'noopener noreferrer');
 });
@@ -165,6 +169,7 @@ test('图片可本地嵌入，非法文件和覆盖取消不改变正文', async
 test('完整样稿导出真正 DOCX，文字、颜色、字号、标题和表格均在文档内', async ({ page }) => {
   await loaded(page);
   await page.locator('#accent').fill('#713b77');
+  await page.getByRole('tab', { name: '版式与细节' }).click();
   await page.locator('#font-size').fill('18');
   const previewText = await page.locator('#preview').innerText();
   const waiting = page.waitForEvent('download');
@@ -281,8 +286,9 @@ test('新增排版设置持久化、导出配置和重置保留图文', async ({
   await loaded(page);
   await page.locator('#image-file').setInputFiles(await imageFile(page));
   await expect(page.locator('#preview img')).toHaveCount(1);
-  await page.locator('#font').selectOption('kai');
   await page.locator('#codeTheme').selectOption('warm');
+  await page.getByRole('tab', { name: '版式与细节' }).click();
+  await page.locator('#font').selectOption('kai');
   await page.locator('#caption').selectOption('alt');
   await expect(page.locator('.image-caption')).toHaveText('配图.png');
   await page.reload();
@@ -354,7 +360,7 @@ test('AI 拒绝无效配置、越界图片、软链接和坏图，失败保留�
 test('18 款主题色可点选，自定义、主题切换与刷新不丢失选择', async ({ page }) => {
   await loaded(page);
   await expect(page.locator('.theme-card')).toHaveCount(9);
-  await expect(page.locator('.theme-options')).toHaveCSS('height', '310px');
+  await expect(page.locator('.theme-options')).toBeVisible();
   await expect(page.locator('.accent-chip')).toHaveCount(18);
   await expect(page.locator('#codeTheme option')).toHaveCount(8);
   for (const [id, [name, color]] of Object.entries(accentPresets)) {
@@ -410,5 +416,61 @@ test('AI 可以发现完整样式目录，预设色归一化并拒绝错误选�
   expect(validateLayout({ accent: 'red', theme: 'classic', paragraphStyle: 'compact' }).accent).toBe('#bd3038');
   for (const config of [{ accent: 'missing' }, { theme: 'missing' }, { fontSize: '25' }, { captionFormat: 'missing' }]) {
     expect(() => validateLayout(config)).toThrow('无效排版参数');
+  }
+});
+
+
+test('设置标签支持键盘切换，隐藏面板不影响配置和含图导出', async ({ page }) => {
+  await loaded(page);
+  const styleTab = page.getByRole('tab', { name: '主题与色彩' });
+  const layoutTab = page.getByRole('tab', { name: '版式与细节' });
+  await expect(styleTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tabpanel', { name: '主题与色彩' })).toBeVisible();
+  await expect(page.locator('#panel-layout')).toBeHidden();
+  const config = await page.evaluate(() => window.paperLab.getConfig());
+  await styleTab.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(layoutTab).toBeFocused();
+  await expect(layoutTab).toHaveAttribute('aria-selected', 'true');
+  await expect(styleTab).toHaveAttribute('tabindex', '-1');
+  await expect(page.locator('#panel-style')).toBeHidden();
+  await page.locator('#font').selectOption('deng');
+  await page.locator('#caption').selectOption('alt');
+  await page.locator('#image-file').setInputFiles(await imageFile(page));
+  await expect(page.locator('#preview .image-caption')).toHaveText('配图.png');
+  await layoutTab.focus();
+  await page.keyboard.press('Home');
+  await expect(styleTab).toBeFocused();
+  expect(await page.evaluate(() => window.paperLab.getConfig())).toEqual({ ...config, font: 'deng', caption: 'alt' });
+  const waiting = page.waitForEvent('download');
+  await page.locator('#download-docx').click();
+  const doc = inspectDocx(await (await waiting).path());
+  expect(doc.images).toBe(1);
+  expect(doc.text).toContain('配图.png');
+  expect(JSON.stringify(doc.fonts)).toContain('等线');
+  expect(doc.text).not.toMatch(/本地渲染|主题与色彩|— END —/);
+  await styleTab.focus();
+  await page.keyboard.press('End');
+  await expect(layoutTab).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(styleTab).toBeFocused();
+});
+
+test('新版工作台在桌面、平板和手机保留全部设置与导出操作', async ({ page }) => {
+  await loaded(page);
+  for (const width of [1920, 1440, 1024, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `宽度 ${width} 无页面横向溢出`).toBe(true);
+    await page.getByRole('tab', { name: '主题与色彩' }).click();
+    await page.locator('[data-theme="notebook"].theme-card').click();
+    await page.locator('[data-accent="olive"]').click();
+    await page.getByRole('tab', { name: '版式与细节' }).click();
+    await page.locator('#font').selectOption('deng');
+    await page.locator('#preview-width').selectOption('680');
+    await expect(page.locator('#preview')).toHaveAttribute('data-theme', 'notebook');
+    await expect(page.locator('#preview-size')).toHaveText('680 px');
+    await expect(page.locator('#download-docx')).toBeVisible();
+    await expect(page.locator('#download-config')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `宽度 ${width} 切换后无页面横向溢出`).toBe(true);
   }
 });

@@ -9,6 +9,34 @@ const preview = $('preview');
 const title = $('title');
 // 保留原存储键，迁移项目目录与名称后仍可恢复已有浏览器草稿。
 const STORAGE_KEY = 'wechat-markdown-lab:draft:v1';
+// 标签页只切换设置面板，不改变文章配置与 Agent 接口。
+const settingsTabs = [...document.querySelectorAll('.settings-tabs [role="tab"]')];
+function selectSettingsTab(selected) {
+  for (const tab of settingsTabs) {
+    const active = tab === selected;
+    tab.setAttribute('aria-selected', String(active));
+    tab.tabIndex = active ? 0 : -1;
+    tab.classList.toggle('active', active);
+    const panel = $(tab.getAttribute('aria-controls'));
+    panel.hidden = !active;
+    panel.classList.toggle('active', active);
+  }
+}
+for (const [index, tab] of settingsTabs.entries()) {
+  tab.addEventListener('click', () => selectSettingsTab(tab));
+  tab.addEventListener('keydown', (event) => {
+    let next;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      next = settingsTabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + settingsTabs.length) % settingsTabs.length];
+    } else if (event.key === 'Home') next = settingsTabs[0];
+    else if (event.key === 'End') next = settingsTabs.at(-1);
+    if (!next) return;
+    event.preventDefault();
+    selectSettingsTab(next);
+    next.focus();
+  });
+}
+
 const MAX_TEXT = 2 * 1024 * 1024;
 const defaults = {
   title: '钱包里没有币：地址、私钥和助记词到底是什么关系',
