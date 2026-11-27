@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { readFile } from 'node:fs/promises';
-import { execFileSync } from 'node:child_process';
+import { readFile, writeFile, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { promisify } from 'node:util';
+import { execFile, execFileSync } from 'node:child_process';
 
 async function imageFile(page, name = '配图.png', color = '#087f74', mimeType = 'image/png') {
   const data = await page.evaluate(({ color, mimeType }) => {
@@ -32,7 +35,7 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  rel=E.fromstring(z.read('word/_rels/document.xml.rels'))
  val='{'+ns['w']+'}val'
  media=[n for n in z.namelist() if n.startswith('word/media/') and not n.endswith('/')]
- print(json.dumps({'text':''.join(t.text or '' for t in root.findall('.//w:t',ns)), 'colors':[n.get(val) for n in root.findall('.//w:color',ns)], 'sizes':[n.get(val) for n in root.findall('.//w:sz',ns)], 'headings':[n.get(val) for n in root.findall('.//w:pStyle',ns)], 'tables':len(root.findall('.//w:tbl',ns)), 'rows':len(root.findall('.//w:tr',ns)), 'images':len(root.findall('.//a:blip',ns)), 'media':media, 'mediaDimensions':[list(struct.unpack('>II',z.read(n)[16:24])) for n in media if n.endswith('.png')], 'externalImages':[n.get('Target') for n in rel if n.get('Type','').endswith('/image') and n.get('TargetMode')=='External'], 'altChunk':len(root.findall('.//w:altChunk',ns))},ensure_ascii=False))
+ print(json.dumps({'text':''.join(t.text or '' for t in root.findall('.//w:t',ns)), 'colors':[n.get(val) for n in root.findall('.//w:color',ns)], 'sizes':[n.get(val) for n in root.findall('.//w:sz',ns)], 'headings':[n.get(val) for n in root.findall('.//w:pStyle',ns)], 'tables':len(root.findall('.//w:tbl',ns)), 'rows':len(root.findall('.//w:tr',ns)), 'images':len(root.findall('.//a:blip',ns)), 'media':media, 'mediaDimensions':[list(struct.unpack('>II',z.read(n)[16:24])) for n in media if n.endswith('.png')], 'externalImages':[n.get('Target') for n in rel if n.get('Type','').endswith('/image') and n.get('TargetMode')=='External'], 'fonts':[n.attrib for n in root.findall('.//w:rFonts',ns)], 'fills':[n.get('{'+ns['w']+'}fill') for n in root.findall('.//w:shd',ns)], 'altChunk':len(root.findall('.//w:altChunk',ns))},ensure_ascii=False))
 `, path], { encoding: 'utf8' }));
 }
 
@@ -269,4 +272,78 @@ test('手机布局没有横向溢出，截图保留实际排版', async ({ page 
   await page.screenshot({ path: 'artifacts/mobile.png', fullPage: true });
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({ path: 'artifacts/desktop.png', fullPage: true });
+});
+
+
+test('新增排版设置持久化、导出配置和重置保留图文', async ({ page }) => {
+  await loaded(page);
+  await page.locator('#image-file').setInputFiles(await imageFile(page));
+  await expect(page.locator('#preview img')).toHaveCount(1);
+  await page.locator('#font').selectOption('kai');
+  await page.locator('#codeTheme').selectOption('warm');
+  await page.locator('#caption').selectOption('alt');
+  await expect(page.locator('.image-caption')).toHaveText('配图.png');
+  await page.reload();
+  await expect(page.locator('#font')).toHaveValue('kai');
+  await expect(page.locator('#codeTheme')).toHaveValue('warm');
+  await expect(page.locator('.image-caption')).toHaveText('配图.png');
+  const waiting = page.waitForEvent('download');
+  await page.locator('#download-config').click();
+  const config = JSON.parse(await readFile(await (await waiting).path(), 'utf8'));
+  expect(config).toMatchObject({ font: 'kai', caption: 'alt', codeTheme: 'warm' });
+  const source = await page.locator('#editor').inputValue();
+  await page.locator('#reset-layout').click();
+  await expect(page.locator('#editor')).toHaveValue(source);
+  await expect(page.locator('#preview img')).toHaveCount(1);
+  await expect(page.locator('.image-caption')).toHaveCount(0);
+  await expect(page.locator('#font')).toHaveValue('theme');
+});
+
+test('AI 命令使用同一配置导出字体、代码配色、图注与本地图片', async ({ page }) => {
+  await loaded(page);
+  const directory = await mkdtemp(path.join(tmpdir(), 'paper-lab-'));
+  try {
+    const image = await imageFile(page);
+    await writeFile(path.join(directory, '配图.png'), image.buffer);
+    await writeFile(path.join(directory, 'article.md'), '## 自动排版\n\n![图片说明](配图.png "图片标题")\n\n```js\nconst answer = 42;\n```');
+    await writeFile(path.join(directory, 'layout.json'), JSON.stringify({ font: 'kai', codeTheme: 'warm', caption: 'title', width: '480' }));
+    const output = path.join(directory, 'result.docx');
+    const { stdout } = await promisify(execFile)(process.execPath, ['scripts/export.mjs', '--input', path.join(directory, 'article.md'), '--config', path.join(directory, 'layout.json'), '--output', output, '--title', 'AI 样稿']);
+    expect(JSON.parse(stdout)).toMatchObject({ ok: true, output, config: { font: 'kai' } });
+    const doc = inspectDocx(output);
+    expect(doc.text).toContain('AI 样稿');
+    expect(doc.text).toContain('图片标题');
+    expect(doc.text).toContain('const answer = 42;');
+    expect(doc.images).toBe(1);
+    expect(doc.mediaDimensions).toEqual([[600, 240]]);
+    expect(JSON.stringify(doc.fonts)).toContain('楷体');
+    expect(doc.fills.map((fill) => fill.toUpperCase())).toContain('FAF2E5');
+    await mkdir('artifacts', { recursive: true });
+    await writeFile('artifacts/ai-with-images.docx', await readFile(output));
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test('AI 拒绝无效配置、越界图片、软链接和坏图，失败保留原输出', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'paper-errors-'));
+  try {
+    const base = path.join(directory, 'article');
+    await mkdir(base);
+    const input = path.join(base, 'article.md');
+    const output = path.join(directory, 'result.docx');
+    await writeFile(output, '已有文件');
+    await writeFile(path.join(directory, 'outside.png'), 'secret');
+    await symlink(path.join(directory, 'outside.png'), path.join(base, 'link.png'));
+    await writeFile(path.join(base, 'broken.png'), 'broken');
+    for (const source of ['../outside.png', 'link.png', 'broken.png', 'https://example.com/private.png']) {
+      await writeFile(input, `![配图](${source})`);
+      await expect(promisify(execFile)(process.execPath, ['scripts/export.mjs', '--input', input, '--output', output])).rejects.toMatchObject({ code: 1, stderr: expect.stringContaining('"ok":false') });
+      expect(await readFile(output, 'utf8')).toBe('已有文件');
+    }
+    await writeFile(input, '正文');
+    for (const config of [{ unknown: true }, { font: 'missing' }, { footnotes: 'true' }]) {
+      const configFile = path.join(directory, 'config.json');
+      await writeFile(configFile, JSON.stringify(config));
+      await expect(promisify(execFile)(process.execPath, ['scripts/export.mjs', '--input', input, '--config', configFile, '--output', output])).rejects.toMatchObject({ code: 1, stderr: expect.stringContaining('排版参数') });
+    }
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });

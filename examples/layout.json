@@ -1,0 +1,11 @@
+{
+  "theme": "journal",
+  "font": "sans",
+  "fontSize": "16",
+  "lineHeight": "1.9",
+  "width": "480",
+  "accent": "#087f74",
+  "codeTheme": "light",
+  "caption": "alt",
+  "footnotes": true
+}

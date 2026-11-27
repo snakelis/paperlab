@@ -21,7 +21,8 @@ pnpm dev
 
 - 以用户提供的钱包文章全文为默认样稿，正文位于 `sample.md`，不改写内容。
 - 单独补充一个可编辑的演示标题；Markdown 导出不改写正文，标题使用文件名承载。
-- Markdown 实时编辑预览、三种主题、自定义颜色、字号、行距和预览宽度。
+- Markdown 实时编辑预览、三种主题、自定义颜色、字体、字号、行距和预览宽度。
+- 三款代码块配色、可选图注、排版重置（保留正文与图片）、导出 AI 配置。
 - 标题、引用、表格、步骤、列表、强调、图片和代码等基础 Markdown。
 - 外部链接可转为文末引用，公众号文章链接保留。
 - 导入 Markdown、插入本地图片和表格；图片支持多选、粘贴和拖到正文编辑区。
@@ -49,6 +50,66 @@ Markdown 原文中的远程图片会由浏览器请求对应地址；本地插�
 
 外链图片受浏览器跨域和网络限制；无法读取、图片损坏或转换遗漏时明确阻止导出，
 请改用本机图片重新插入。Markdown 直接引用的 GIF 在网页可能动画播放，Word 仅保存首帧。
+
+## AI 自动调用
+
+定位是供 AI 使用的独立排版模块：AI 交付 Markdown、图片和排版配置，工具生成 DOCX。
+当前只在独立目录验证，没有接入现有系统，也不在工具中调用 AI 改写正文。
+
+安装依赖与 Chromium 后，在本目录执行：
+
+```bash
+pnpm exec playwright install chromium
+pnpm export --input sample.md --config examples/layout.json --output artifacts/ai-wallet.docx --title "钱包入门"
+```
+
+程序调用建议直接使用 Node，避免 pnpm 的提示混入标准输出：
+
+```bash
+node scripts/export.mjs --input article.md --config examples/layout.json --output article.docx
+```
+
+`--input`、`--output` 必填，输出扩展名必须是 `.docx`。`--config` 可省略以使用默认设置，
+`--title` 可省略以使用 Markdown 文件名。当前使用已有 Playwright/Chromium 运行环境，
+正式部署时仍需安装它们，不能只复制一个 JavaScript 文件。
+命令自动启动随机端口的本机临时服务和无界面浏览器，结束后关闭；不依赖演示页面或 8766 端口。
+
+成功时退出码为 0，标准输出单行 JSON：
+
+```json
+{"ok":true,"output":"/absolute/article.docx","bytes":16000,"config":{"theme":"journal"}}
+```
+
+这里的 `config` 为简写示例，实际返回全部生效设置。失败时退出码为 1，标准错误输出
+`{"ok":false,"error":"具体原因"}`。参数和图像验证通过、文档生成完成后才替换目标文件；
+目标存在时成功导出会覆盖它，失败保留原输出。系统调用应传入独立参数数组，并为各任务指定不同输出路径。
+
+图片写作 `![图片说明](images/photo.png "图片标题")`，相对于 Markdown 所在目录解析，
+支持子目录及中文文件名。仅允许该目录内实际存在的 PNG/JPEG/WebP/GIF，检查软链接真实路径；
+不读取目录外文件。支持正文内嵌 data URL 图片，但原 Markdown 总大小仍限 2 MB。
+AI 命令禁用外网请求，请先把远程图片下载为本地文件；图片缺失、损坏或转换失败时不会生成缺图 DOCX。
+HTML 写法中的本地图片路径不做文件解析，请使用标准 Markdown 图片语法。
+
+排版参数与网页设置共用校验，未知字段或错误值会报错。所有数值参数使用 JSON 字符串。
+可在网页试好样式后点「保存 AI 配置」，交给 AI 重复使用。
+
+| 字段 | 可选值 | 默认值 |
+| --- | --- | --- |
+| `theme` | `journal` 清爽笔记、`editorial` 人文杂志、`technical` 技术专栏 | `journal` |
+| `font` | `theme` 跟随主题、`sans` 微软雅黑、`serif` 宋体、`kai` 楷体、`fang` 仿宋 | `theme` |
+| `fontSize` | `"14"` 至 `"20"`，单位 px | `"16"` |
+| `lineHeight` | `"1.7"`、`"1.9"`、`"2.1"` | `"1.9"` |
+| `width` | `"375"`、`"480"`、`"680"`，预览纸张宽度（正文扣除留白） | `"375"` |
+| `accent` | 六位十六进制颜色，如 `#087f74` | `#087f74` |
+| `codeTheme` | `dark` 深色、`light` 浅色、`warm` 暖色 | `dark` |
+| `caption` | `none` 不显示、`alt` 图片替代文字、`title` 图片标题 | `none` |
+| `footnotes` | JSON 布尔值，是否转换外链引用 | `true` |
+
+图注使用真实文字参与预览与导出，选定字段没有文字则不补图注。字体不内嵌，浏览器和 Word
+缺少对应字体时会替代；代码块仅提供整体配色，暂不提供逐词语法高亮。
+自定义 CSS 和 Mac 代码块装饰暂不开放，优先保证上述参数可转为 Word 基础样式。
+浏览器自动化也可等待 `window.paperLabReady` 后使用 `window.paperLab.load({markdown,title,config})`、
+`getConfig()` 和 `exportDocx()`（返回 Blob）；CLI 已封装完整调用流程。
 
 ## 验证
 

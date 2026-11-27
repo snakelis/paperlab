@@ -31,10 +31,14 @@
         <button type="button" data-theme="technical" class="theme-card" aria-pressed="false"><span class="swatch technical">Aa</span><b>技术专栏</b><small>理性 · 层次 · 精准</small></button>
       </div>
       <div class="setting-block"><label for="accent">主题颜色</label><div class="color-field"><input type="color" id="accent" value="#087f74"><span id="accent-value">#087F74</span><span>自定义</span></div></div>
+      <div class="setting-block"><label for="font">正文字体</label><select id="font"><option value="theme">跟随主题</option><option value="sans">微软雅黑</option><option value="serif">宋体</option><option value="kai">楷体</option><option value="fang">仿宋</option></select></div>
+      <div class="setting-block"><label for="codeTheme">代码块配色</label><select id="codeTheme"><option value="dark">深色</option><option value="light">浅色</option><option value="warm">暖色</option></select></div>
+      <div class="setting-block"><label for="caption">图片说明</label><select id="caption"><option value="none">不显示图注</option><option value="alt">使用图片替代文字 alt</option><option value="title">使用图片标题 title</option></select></div>
       <div class="setting-block"><label for="font-size">正文字号 <output id="font-size-value">16 px</output></label><input type="range" id="font-size" min="14" max="20" value="16" step="1"><div class="range-labels"><span>紧凑</span><span>舒展</span></div></div>
       <div class="setting-block"><label for="line-height">行间距</label><select id="line-height"><option value="1.7">紧凑 · 1.7</option><option value="1.9" selected>舒适 · 1.9</option><option value="2.1">宽松 · 2.1</option></select></div>
       <div class="setting-block"><label for="preview-width">预览宽度</label><select id="preview-width"><option value="375" selected>手机 · 375 px</option><option value="480">大屏 · 480 px</option><option value="680">阅读 · 680 px</option></select></div>
       <label class="checkbox-label"><input type="checkbox" id="footnotes" checked><span>外链转换为文末引用</span></label>
+      <div class="setting-block"><button id="reset-layout" class="button">重置排版</button><button id="download-config" class="button">保存 AI 配置</button></div>
       <div class="settings-bottom"><b>从内容到成品</b><p>编辑 / 插图 → 预览 → 导出 Word</p><p>图片与基础排版一起写入 DOCX。公众号导入后的最终样式仍需核对。</p></div>
     </aside>
 

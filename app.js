@@ -1,6 +1,8 @@
 import { marked } from './node_modules/marked/lib/marked.esm.js';
 import DOMPurify from './node_modules/dompurify/dist/purify.es.mjs';
 
+import { layoutDefaults, fontFamilies, validateLayout, getLayout } from './layout.js';
+
 const $ = (id) => document.getElementById(id);
 const editor = $('editor');
 const preview = $('preview');
@@ -9,12 +11,18 @@ const STORAGE_KEY = 'wechat-markdown-lab:draft:v1';
 const MAX_TEXT = 2 * 1024 * 1024;
 const defaults = {
   title: '钱包里没有币：地址、私钥和助记词到底是什么关系',
-  markdown: '', theme: 'journal', accent: '#087f74', fontSize: '16',
-  lineHeight: '1.9', width: '375', footnotes: true, images: {},
+  markdown: '', ...layoutDefaults, images: {},
 };
 let state = { ...defaults };
 let renderTimer;
 let toastTimer;
+
+// Markdown 图片和 HTML 图片均在净化过程中解析本地素材，随后继续执行 URI 安全校验。
+DOMPurify.addHook('uponSanitizeAttribute', (node, attribute) => {
+  if (node.tagName === 'IMG' && attribute.attrName === 'src' && Object.hasOwn(state.images, attribute.attrValue)) {
+    attribute.attrValue = state.images[attribute.attrValue];
+  }
+});
 
 function notify(message, error = false) {
   const status = $('status');
@@ -38,6 +46,9 @@ function readSaved() {
       lineHeight: ['1.7', '1.9', '2.1'].includes(saved.lineHeight) ? saved.lineHeight : defaults.lineHeight,
       width: ['375', '480', '680'].includes(saved.width) ? saved.width : defaults.width,
       footnotes: typeof saved.footnotes === 'boolean' ? saved.footnotes : defaults.footnotes,
+      font: ['theme', ...Object.keys(fontFamilies)].includes(saved.font) ? saved.font : defaults.font,
+      codeTheme: ['dark', 'light', 'warm'].includes(saved.codeTheme) ? saved.codeTheme : defaults.codeTheme,
+      caption: ['none', 'alt', 'title'].includes(saved.caption) ? saved.caption : defaults.caption,
       images: Object.fromEntries(Object.entries(saved.images || {}).filter(([id, data]) =>
         /^local-image:[\da-f-]+$/i.test(id) && typeof data === 'string' && /^data:image\/(png|jpeg|webp|gif);base64,/i.test(data))),
     };
@@ -63,9 +74,6 @@ function save() {
 function render() {
   clearTimeout(renderTimer);
   const tokens = marked.lexer(editor.value, { gfm: true });
-  marked.walkTokens(tokens, (token) => {
-    if (token.type === 'image' && Object.hasOwn(state.images, token.href)) token.href = state.images[token.href];
-  });
   const safeHTML = DOMPurify.sanitize(marked.parser(tokens), {
     USE_PROFILES: { html: true },
     FORBID_TAGS: ['style', 'input', 'form', 'button', 'iframe', 'video', 'audio'],
@@ -104,6 +112,17 @@ function render() {
     });
     preview.append(section);
   }
+  for (const image of preview.querySelectorAll('img')) {
+    const text = state.caption === 'alt' ? image.alt : state.caption === 'title' ? image.title : '';
+    if (text) {
+      const caption = document.createElement('span');
+      caption.className = 'image-caption';
+      caption.textContent = text;
+      image.after(caption);
+    }
+  }
+  preview.dataset.codeTheme = state.codeTheme;
+  preview.style.fontFamily = fontFamilies[state.font] || '';
   preview.dataset.theme = state.theme;
   preview.style.setProperty('--accent', state.accent);
   preview.style.fontSize = `${state.fontSize}px`;
@@ -125,6 +144,7 @@ function syncControls() {
   $('line-height').value = state.lineHeight;
   $('preview-width').value = state.width;
   $('footnotes').checked = state.footnotes;
+  for (const field of ['font', 'codeTheme', 'caption']) $(field).value = state[field];
   document.querySelectorAll('[data-theme].theme-card').forEach((button) => {
     const active = button.dataset.theme === state.theme;
     button.classList.toggle('active', active);
@@ -211,7 +231,7 @@ document.querySelectorAll('.theme-card').forEach((button) => button.addEventList
   syncControls();
 }));
 
-for (const [id, field] of [['accent', 'accent'], ['font-size', 'fontSize'], ['line-height', 'lineHeight'], ['preview-width', 'width'], ['footnotes', 'footnotes']]) {
+for (const [id, field] of [['accent', 'accent'], ['font-size', 'fontSize'], ['line-height', 'lineHeight'], ['preview-width', 'width'], ['footnotes', 'footnotes'], ['font', 'font'], ['codeTheme', 'codeTheme'], ['caption', 'caption']]) {
   $(id).addEventListener('input', () => {
     state[field] = id === 'footnotes' ? $(id).checked : $(id).value;
     $('accent-value').textContent = state.accent.toUpperCase();
@@ -366,12 +386,43 @@ $('copy').addEventListener('click', async () => {
   } finally { button.disabled = false; }
 });
 
+$('reset-layout').addEventListener('click', () => {
+  state = { ...state, ...layoutDefaults, markdown: editor.value, title: title.value };
+  syncControls();
+  notify('已重置排版，正文与图片已保留。');
+});
+$('download-config').addEventListener('click', () => {
+  download(JSON.stringify(getLayout(state), null, 2), 'json', 'application/json');
+});
+
+// 受控的浏览器调用入口，CLI 与交互界面复用相同的预览和 DOCX 转换。
+window.paperLab = Object.freeze({
+  load({ markdown, title: documentTitle = '', config = {}, images = {} }) {
+    if (typeof markdown !== 'string' || new TextEncoder().encode(markdown).length > MAX_TEXT) throw new Error('Markdown 必须是不超过 2 MB 的文本');
+    if (typeof documentTitle !== 'string' || documentTitle.length > 200) throw new Error('标题必须是不超过 200 字符的文本');
+    const layout = validateLayout(config);
+    if (!images || typeof images !== 'object' || Array.isArray(images)) throw new Error('图片必须是对象');
+    for (const [id, data] of Object.entries(images)) {
+      if (!/^local-image:[\da-f-]+$/i.test(id) || typeof data !== 'string' || !/^data:image\/(png|jpeg|webp|gif);base64,/i.test(data) || data.length > 7 * 1024 * 1024) throw new Error('图片参数无效');
+    }
+    state = { ...defaults, ...layout, markdown, title: documentTitle, images: { ...images } };
+    syncControls();
+    return getLayout(state);
+  },
+  getConfig: () => getLayout(state),
+  async exportDocx() {
+    const html = inlineHTML();
+    const { createDocx } = await import('./docx-export.js');
+    return createDocx(html, title.value, preview.clientWidth);
+  },
+});
+
 window.addEventListener('pagehide', save);
 const saved = readSaved();
-if (saved) { state = saved; syncControls(); }
+if (saved) { state = saved; syncControls(); window.paperLabReady = true; }
 else {
   loadSample().catch(() => {
     syncControls();
     notify('示例文章加载失败，可自行粘贴 Markdown。请通过本地 HTTP 服务打开页面。', true);
-  });
+  }).finally(() => { window.paperLabReady = true; });
 }
